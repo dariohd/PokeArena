@@ -1,7 +1,6 @@
 import Phaser from 'phaser'
-import { GAME_H, GAME_W } from './config'
 import { ITEM_SPRITE, type InventoryKey } from './data/types'
-import { FONT_TITLE, FONT_UI, Theme, type RoomKind } from './theme'
+import { FONT_TITLE, FONT_UI, Theme } from './theme'
 
 export type UiButton = Phaser.GameObjects.Container & {
   setLabel: (label: string) => void
@@ -12,65 +11,22 @@ export function hexCss(n: number): string {
 }
 
 export function starsLabel(n: number): string {
-  return '★'.repeat(Math.max(0, Math.min(4, n)))
+  return `${Math.max(0, Math.min(4, n))}★`
 }
 
-export function fadeIn(scene: Phaser.Scene, color: number = Theme.skyTop) {
+export function fadeIn(scene: Phaser.Scene, color: number = Theme.fade) {
   const r = (color >> 16) & 0xff
   const g = (color >> 8) & 0xff
   const b = color & 0xff
   scene.cameras.main.fadeIn(220, r, g, b)
 }
 
-export function goScene(scene: Phaser.Scene, key: string, color: number = Theme.skyTop) {
+export function goScene(scene: Phaser.Scene, key: string, color: number = Theme.fade) {
   const r = (color >> 16) & 0xff
   const g = (color >> 8) & 0xff
   const b = color & 0xff
   scene.cameras.main.fadeOut(160, r, g, b)
   scene.time.delayedCall(170, () => scene.scene.start(key))
-}
-
-/** Fond de salle : aplats sobres (pas de décor inventé). */
-export function drawRoom(scene: Phaser.Scene, kind: RoomKind, accent: number = Theme.red) {
-  const g = scene.add.graphics()
-  const fills: Record<RoomKind, number> = {
-    outdoor: 0x1a2838,
-    centre: 0x141018,
-    mart: 0x102030,
-    dojo: 0x201810,
-    dex: 0x280c0c,
-    machine: 0x12141c,
-    pc: 0x0c1828,
-    result: 0x121820,
-  }
-  g.fillStyle(fills[kind] ?? 0x101018, 1)
-  g.fillRect(0, 0, GAME_W, GAME_H)
-  g.fillStyle(accent, 0.12)
-  g.fillRect(0, 0, GAME_W, 52)
-  return g
-}
-
-/** Cadre dialogue RPG (double bordure) */
-export function drawPanel(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  opts?: { fill?: number; stroke?: number; radius?: number; depth?: number },
-) {
-  const g = scene.add.graphics()
-  const fill = opts?.fill ?? Theme.panel
-  const stroke = opts?.stroke ?? Theme.panelStroke
-  const r = opts?.radius ?? 14
-  g.fillStyle(stroke, 1)
-  g.fillRoundedRect(x - 3, y - 3, w + 6, h + 6, r + 2)
-  g.fillStyle(fill, 1)
-  g.fillRoundedRect(x, y, w, h, r)
-  g.lineStyle(2, Theme.panelEdge, 0.35)
-  g.strokeRoundedRect(x + 4, y + 4, w - 8, h - 8, Math.max(6, r - 4))
-  if (opts?.depth != null) g.setDepth(opts.depth)
-  return g
 }
 
 export function drawPokeBall(scene: Phaser.Scene, x: number, y: number, radius = 36) {
@@ -79,26 +35,25 @@ export function drawPokeBall(scene: Phaser.Scene, x: number, y: number, radius =
   g.fillCircle(x, y, radius)
   g.fillStyle(Theme.red, 1)
   g.fillRect(x - radius, y - radius, radius * 2, radius + 1)
-  g.lineStyle(4, Theme.ink, 1)
+  g.lineStyle(3, Theme.ink, 1)
   g.strokeCircle(x, y, radius)
   g.lineBetween(x - radius, y, x + radius, y)
   g.fillStyle(Theme.white, 1)
   g.fillCircle(x, y, radius * 0.32)
-  g.lineStyle(3, Theme.ink, 1)
+  g.lineStyle(2, Theme.ink, 1)
   g.strokeCircle(x, y, radius * 0.32)
   g.fillStyle(Theme.ink, 1)
   g.fillCircle(x, y, radius * 0.12)
   return g
 }
 
-type BtnTone = 'red' | 'blue' | 'green' | 'gold' | 'ghost' | 'dark'
+type BtnTone = 'red' | 'blue' | 'green' | 'gold' | 'dark'
 
 const BTN_COLORS: Record<BtnTone, { bg: number; text: string }> = {
   red: { bg: Theme.red, text: '#ffffff' },
   blue: { bg: Theme.blue, text: '#ffffff' },
   green: { bg: Theme.grassDark, text: '#ffffff' },
   gold: { bg: Theme.gold, text: '#1e2438' },
-  ghost: { bg: Theme.panelDeep, text: '#1e2438' },
   dark: { bg: Theme.machine, text: '#ffffff' },
 }
 
@@ -120,7 +75,7 @@ export function makeButton(
   const colors = BTN_COLORS[tone]
   const padX = opts?.padX ?? 16
   const padY = opts?.padY ?? 10
-  const fontSize = opts?.fontSize ?? '15px'
+  const fontSize = opts?.fontSize ?? '14px'
 
   const bg = scene.add.graphics()
   const text = scene.add
@@ -133,54 +88,39 @@ export function makeButton(
 
   const tw = opts?.width ?? text.width + padX * 2
   const th = text.height + padY * 2
-  const drawBg = (scale = 1) => {
+  const drawBg = () => {
     bg.clear()
-    const w = tw * scale
-    const h = th * scale
-    bg.fillStyle(0x000000, 0.18)
-    bg.fillRoundedRect(-w / 2, -h / 2 + 3, w, h, 10)
+    bg.fillStyle(0x000000, 0.2)
+    bg.fillRoundedRect(-tw / 2, -th / 2 + 2, tw, th, 8)
     bg.fillStyle(colors.bg, 1)
-    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10)
-    bg.lineStyle(2, Theme.white, tone === 'ghost' ? 0.2 : 0.45)
-    bg.strokeRoundedRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2, 9)
+    bg.fillRoundedRect(-tw / 2, -th / 2, tw, th, 8)
+    bg.lineStyle(1.5, Theme.white, 0.35)
+    bg.strokeRoundedRect(-tw / 2 + 1, -th / 2 + 1, tw - 2, th - 2, 7)
   }
   drawBg()
 
   const hit = scene.add.zone(0, 0, tw, th).setInteractive({ useHandCursor: true })
   const container = scene.add.container(x, y, [bg, text, hit]) as UiButton
   container.setSize(tw, th)
-
-  container.setLabel = (next: string) => {
-    text.setText(next)
-  }
+  container.setLabel = (next: string) => text.setText(next)
 
   hit.on('pointerover', () => {
-    scene.tweens.add({ targets: container, scale: 1.05, duration: 90, ease: 'Back.easeOut' })
+    scene.tweens.add({ targets: container, scale: 1.04, duration: 70 })
   })
   hit.on('pointerout', () => {
-    scene.tweens.add({ targets: container, scale: 1, duration: 90 })
+    scene.tweens.add({ targets: container, scale: 1, duration: 70 })
   })
   hit.on('pointerdown', () => {
     scene.tweens.add({
       targets: container,
       scale: 0.96,
-      duration: 60,
+      duration: 50,
       yoyo: true,
       onComplete: () => opts?.onClick?.(),
     })
   })
 
   return container
-}
-
-export function makeBackButton(scene: Phaser.Scene, to = 'hub') {
-  return makeButton(scene, 78, GAME_H - 28, 'Retour', {
-    tone: 'red',
-    fontSize: '14px',
-    padX: 14,
-    padY: 8,
-    onClick: () => goScene(scene, to),
-  })
 }
 
 export function titleText(
@@ -194,7 +134,7 @@ export function titleText(
     .text(x, y, label, {
       fontFamily: FONT_TITLE,
       fontSize: opts?.size ?? '28px',
-      color: opts?.color ?? hexCss(Theme.ink),
+      color: opts?.color ?? '#ffffff',
     })
     .setOrigin(opts?.origin ?? 0.5)
 }
@@ -210,14 +150,13 @@ export function bodyText(
     .text(x, y, label, {
       fontFamily: FONT_UI,
       fontSize: opts?.size ?? '13px',
-      color: opts?.color ?? hexCss(Theme.muted),
+      color: opts?.color ?? 'rgba(255,255,255,0.7)',
       align: opts?.align ?? 'left',
       wordWrap: opts?.wrap ? { width: opts.wrap } : undefined,
     })
     .setOrigin(opts?.origin ?? 0.5)
 }
 
-/** Badge de type coloré (Pokémon) */
 export function typeBadge(scene: Phaser.Scene, x: number, y: number, typeName: string, color: number) {
   const label = scene.add
     .text(0, 0, typeName, {
@@ -229,9 +168,7 @@ export function typeBadge(scene: Phaser.Scene, x: number, y: number, typeName: s
   const w = Math.max(52, label.width + 16)
   const g = scene.add.graphics()
   g.fillStyle(color, 1)
-  g.fillRoundedRect(-w / 2, -11, w, 22, 8)
-  g.lineStyle(1, Theme.white, 0.35)
-  g.strokeRoundedRect(-w / 2, -11, w, 22, 8)
+  g.fillRoundedRect(-w / 2, -11, w, 22, 6)
   return scene.add.container(x, y, [g, label])
 }
 
@@ -268,57 +205,16 @@ export async function ensureTextures(
   }
 }
 
-/** Orbe menu sobre */
-export function makeGlassOrb(
+export async function ensureItemIcons(
   scene: Phaser.Scene,
-  x: number,
-  y: number,
-  label: string,
-  accent: number,
-  onClick: () => void,
+  keys: InventoryKey[] = Object.keys(ITEM_SPRITE) as InventoryKey[],
 ) {
-  const container = scene.add.container(x, y)
-  const g = scene.add.graphics()
-  g.fillStyle(0x000000, 0.55)
-  g.fillRoundedRect(-108, -22, 216, 44, 10)
-  g.lineStyle(2, accent, 1)
-  g.strokeRoundedRect(-108, -22, 216, 44, 10)
-  g.fillStyle(accent, 1)
-  g.fillCircle(-84, 0, 6)
-
-  const text = scene.add
-    .text(-66, 0, label, {
-      fontFamily: FONT_TITLE,
-      fontSize: '16px',
-      color: '#ffffff',
-    })
-    .setOrigin(0, 0.5)
-
-  container.add([g, text])
-  container.setSize(216, 44)
-  container.setInteractive({
-    hitArea: new Phaser.Geom.Rectangle(-108, -22, 216, 44),
-    hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-    useHandCursor: true,
-  })
-  container.on('pointerover', () => {
-    scene.tweens.add({ targets: container, scale: 1.04, duration: 80 })
-  })
-  container.on('pointerout', () => {
-    scene.tweens.add({ targets: container, scale: 1, duration: 80 })
-  })
-  container.on('pointerdown', onClick)
-  return container
-}
-
-export async function ensureItemIcons(scene: Phaser.Scene, keys: InventoryKey[] = Object.keys(ITEM_SPRITE) as InventoryKey[]) {
   await ensureTextures(
     scene,
     keys.map((k) => ({ key: itemTextureKey(k), url: itemSpriteUrl(ITEM_SPRITE[k]) })),
   )
 }
 
-/** Icône dock compacte (cercle + label court) */
 export function makeDockIcon(
   scene: Phaser.Scene,
   x: number,
@@ -327,9 +223,7 @@ export function makeDockIcon(
     label: string
     accent: number
     onClick: () => void
-    /** texture item optionnelle */
     iconKey?: string
-    /** dessin custom si pas d’iconKey */
     drawIcon?: (g: Phaser.GameObjects.Graphics) => void
   },
 ) {
@@ -342,8 +236,7 @@ export function makeDockIcon(
   const kids: Phaser.GameObjects.GameObject[] = [g]
 
   if (opts.iconKey && scene.textures.exists(opts.iconKey)) {
-    const img = scene.add.image(0, -6, opts.iconKey).setScale(1.15)
-    kids.push(img)
+    kids.push(scene.add.image(0, -6, opts.iconKey).setScale(1.1))
   } else if (opts.drawIcon) {
     const ig = scene.add.graphics()
     opts.drawIcon(ig)
@@ -353,14 +246,15 @@ export function makeDockIcon(
     g.fillCircle(0, -6, 5)
   }
 
-  const label = scene.add
-    .text(0, 18, opts.label, {
-      fontFamily: FONT_UI,
-      fontSize: '10px',
-      color: 'rgba(255,255,255,0.75)',
-    })
-    .setOrigin(0.5)
-  kids.push(label)
+  kids.push(
+    scene.add
+      .text(0, 18, opts.label, {
+        fontFamily: FONT_UI,
+        fontSize: '10px',
+        color: 'rgba(255,255,255,0.75)',
+      })
+      .setOrigin(0.5),
+  )
 
   const c = scene.add.container(x, y, kids)
   c.setSize(44, 48)
@@ -373,16 +267,4 @@ export function makeDockIcon(
   c.on('pointerout', () => scene.tweens.add({ targets: c, scale: 1, duration: 70 }))
   c.on('pointerdown', opts.onClick)
   return c
-}
-
-export function walletBar(
-  scene: Phaser.Scene,
-  y: number,
-  parts: string[],
-  opts?: { color?: string },
-) {
-  return bodyText(scene, GAME_W / 2, y, parts.join('  ·  '), {
-    size: '12px',
-    color: opts?.color ?? hexCss(Theme.muted),
-  })
 }

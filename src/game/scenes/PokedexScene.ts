@@ -5,8 +5,8 @@ import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { fetchMon, fetchMany, loadSave } from '../data/pokeapi'
 import { GEN_MAX_ID, TYPE_COLORS, TYPE_FR, type MonSummary } from '../data/types'
-import { L, drawShell, sectionTitle } from '../layout'
-import { Theme } from '../theme'
+import { L, drawShell, sectionTitle, slotFrame } from '../layout'
+import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 import { bodyText, ensureTextures, fadeIn, makeButton, typeBadge } from '../ui'
 
 export class PokedexScene extends Phaser.Scene {
@@ -17,7 +17,7 @@ export class PokedexScene extends Phaser.Scene {
   private sprite?: Phaser.GameObjects.Image
   private badges: Phaser.GameObjects.Container[] = []
   private maxId = 151
-  private listW = 700
+  private listW = 720
   private detailX = 0
 
   constructor() {
@@ -25,7 +25,7 @@ export class PokedexScene extends Phaser.Scene {
   }
 
   async create() {
-    fadeIn(this, 0x07090e)
+    fadeIn(this)
     await paintScene(this, BG.dex, { dim: 0.5 })
     const save = loadSave()
     this.maxId = GEN_MAX_ID[save.unlockedGen] ?? 151
@@ -34,16 +34,11 @@ export class PokedexScene extends Phaser.Scene {
     this.listW = 720
     this.detailX = zone.x + this.listW + 16
 
-    sectionTitle(
-      this,
-      zone.x,
-      zone.y + 4,
-      `Vus ${save.seen.length} · Capturés ${save.roster.length}`,
-    )
+    sectionTitle(this, zone.x, zone.y + 4, `Vus ${save.seen.length} · Capturés ${save.roster.length}`)
 
     this.detail = this.add
       .text(this.detailX + 12, zone.y + 220, 'Sélectionne une entrée', {
-        fontFamily: '"Nunito", system-ui, sans-serif',
+        fontFamily: FONT_UI,
         fontSize: '13px',
         color: '#ffffff',
         wordWrap: { width: zone.w - this.listW - 40 },
@@ -53,27 +48,28 @@ export class PokedexScene extends Phaser.Scene {
 
     await this.loadPage()
 
-    makeButton(this, zone.x + 90, L.dockY, '◀', {
+    const cy = L.contentY + L.contentH - 28
+    makeButton(this, zone.x + 60, cy, 'Préc.', {
       tone: 'blue',
-      fontSize: '16px',
-      padX: 16,
-      padY: 10,
+      fontSize: '13px',
+      padX: 14,
+      padY: 8,
       onClick: async () => {
         this.page = Math.max(0, this.page - 1)
         await this.loadPage()
       },
-    }).setDepth(102)
+    }).setDepth(22)
 
-    makeButton(this, zone.x + 180, L.dockY, '▶', {
+    makeButton(this, zone.x + 150, cy, 'Suiv.', {
       tone: 'blue',
-      fontSize: '16px',
-      padX: 16,
-      padY: 10,
+      fontSize: '13px',
+      padX: 14,
+      padY: 8,
       onClick: async () => {
         this.page += 1
         await this.loadPage()
       },
-    }).setDepth(102)
+    }).setDepth(22)
   }
 
   async loadPage() {
@@ -96,53 +92,51 @@ export class PokedexScene extends Phaser.Scene {
       mons.map((m) => ({ key: m.homeKey, url: m.homeUrl })),
     )
 
-    const zoneX = L.pad
-    const zoneY = L.contentY
-
     ids.forEach((id, i) => {
       const col = i % 4
       const row = Math.floor(i / 4)
-      const x = zoneX + 18 + col * 172
-      const y = zoneY + 48 + row * 120
+      const x = L.pad + 80 + col * 170
+      const y = L.contentY + 90 + row * 110
       const knownMon = map.get(id)
       const caught = save.roster.includes(id)
       const seen = save.seen.includes(id) || caught
 
-      const card = this.add.container(x, y).setData('dexEntry', true).setDepth(15)
-      const g = this.add.graphics()
-      g.fillStyle(0x000000, seen ? 0.45 : 0.3)
-      g.fillRoundedRect(0, 0, 158, 104, 12)
-      g.lineStyle(1.5, seen ? Theme.red : Theme.muted, 0.9)
-      g.strokeRoundedRect(0, 0, 158, 104, 12)
-      card.add(g)
+      slotFrame(this, x, y, 150, 90, seen ? Theme.red : Theme.muted).setData('dexEntry', true)
 
       if (seen && knownMon && this.textures.exists(knownMon.homeKey)) {
-        const img = this.add.image(40, 52, knownMon.homeKey).setScale(0.14)
+        const img = this.add
+          .image(x - 40, y, knownMon.homeKey)
+          .setScale(0.12)
+          .setData('dexEntry', true)
+          .setDepth(15)
         if (!caught) img.setTint(0x333344)
-        card.add(img)
       }
 
-      card.add(
-        this.add.text(78, 20, String(id).padStart(3, '0'), {
-          fontFamily: '"Nunito", system-ui, sans-serif',
-          fontSize: '12px',
-          color: 'rgba(255,255,255,0.5)',
-        }),
-      )
-      card.add(
-        this.add.text(78, 46, seen ? (knownMon?.nameFr ?? `#${id}`) : '???', {
-          fontFamily: '"Fredoka", "Nunito", sans-serif',
-          fontSize: '14px',
+      this.add
+        .text(x + 10, y - 22, String(id).padStart(3, '0'), {
+          fontFamily: FONT_UI,
+          fontSize: '11px',
+          color: 'rgba(255,255,255,0.45)',
+        })
+        .setData('dexEntry', true)
+        .setDepth(15)
+
+      this.add
+        .text(x + 10, y + 2, seen ? (knownMon?.nameFr ?? `#${id}`) : '???', {
+          fontFamily: FONT_TITLE,
+          fontSize: '13px',
           color: seen ? '#ffffff' : 'rgba(255,255,255,0.4)',
-          wordWrap: { width: 72 },
-        }),
-      )
+          wordWrap: { width: 70 },
+        })
+        .setData('dexEntry', true)
+        .setDepth(15)
 
       if (seen) {
-        card.setSize(158, 104)
-        card.setInteractive(new Phaser.Geom.Rectangle(0, 0, 158, 104), Phaser.Geom.Rectangle.Contains)
-        card.input!.cursor = 'pointer'
-        card.on('pointerdown', () => void this.showDetail(id))
+        this.add
+          .zone(x, y, 150, 90)
+          .setInteractive({ useHandCursor: true })
+          .setData('dexEntry', true)
+          .on('pointerdown', () => void this.showDetail(id))
       }
     })
 
@@ -158,15 +152,15 @@ export class PokedexScene extends Phaser.Scene {
 
     const cx = this.detailX + (GAME_W - L.pad - this.detailX) / 2
     this.sprite = this.add
-      .image(cx, L.contentY + 110, mon.homeKey)
-      .setScale(0.36)
+      .image(cx, L.contentY + 100, mon.homeKey)
+      .setScale(0.32)
       .setData('dexEntry', true)
       .setDepth(16)
     mon.types.forEach((t, i) => {
       const badge = typeBadge(
         this,
-        cx - 40 + i * 80,
-        L.contentY + 210,
+        cx - 36 + i * 72,
+        L.contentY + 190,
         TYPE_FR[t] ?? t,
         TYPE_COLORS[t] ?? Theme.blue,
       )
@@ -174,7 +168,7 @@ export class PokedexScene extends Phaser.Scene {
       this.badges.push(badge)
     })
 
-    this.detail.setPosition(this.detailX + 20, L.contentY + 250)
+    this.detail.setPosition(this.detailX + 12, L.contentY + 230)
     this.detail.setText(
       `${mon.nameFr} · ${mon.genusFr}\n` +
         `Talent ${mon.abilityNameFr}\n` +

@@ -1,8 +1,7 @@
-/** Helpers visuels « feeling jeu » (particules, parallaxe, boot DOM). */
+/** FX utiles uniquement (pas d’ambiance inventée). */
 
 import Phaser from 'phaser'
 import { GAME_H, GAME_W } from './config'
-import { Theme } from './theme'
 
 export function setBootProgress(pct: number, label?: string) {
   const clamped = Math.max(0, Math.min(100, Math.round(pct)))
@@ -20,124 +19,57 @@ export function hideBootOverlay() {
   document.getElementById('boot')?.classList.add('is-hidden')
 }
 
-/** Nuages / poussière légère pour ambiance gacha */
-export function spawnAmbientSparkles(scene: Phaser.Scene, count = 18, color = 0xffffff) {
-  const g = scene.add.graphics().setDepth(5).setAlpha(0.55)
-  for (let i = 0; i < count; i++) {
-    const x = Math.random() * GAME_W
-    const y = 40 + Math.random() * (GAME_H * 0.55)
-    const r = 1 + Math.random() * 2.2
-    g.fillStyle(color, 0.35 + Math.random() * 0.45)
-    g.fillCircle(x, y, r)
-  }
-  scene.tweens.add({
-    targets: g,
-    alpha: 0.2,
-    duration: 2200,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut',
-  })
-  return g
-}
-
-export function spawnDriftClouds(scene: Phaser.Scene, depth = 2) {
-  const clouds: Phaser.GameObjects.Ellipse[] = []
-  for (let i = 0; i < 5; i++) {
-    const c = scene.add
-      .ellipse(
-        -80 + i * 220,
-        50 + (i % 3) * 28,
-        120 + (i % 2) * 40,
-        36 + (i % 2) * 10,
-        0xffffff,
-        0.22,
-      )
-      .setDepth(depth)
-    clouds.push(c)
-    scene.tweens.add({
-      targets: c,
-      x: GAME_W + 120,
-      duration: 28000 + i * 4000,
-      repeat: -1,
-      ease: 'Linear',
-    })
-  }
-  return clouds
-}
-
-/** Sol arène simple (lisible, pas de décor inventé) */
-export function drawPerspectiveArena(scene: Phaser.Scene) {
-  const g = scene.add.graphics().setDepth(0)
-  g.fillStyle(0x5a9ec8, 1)
-  g.fillRect(0, 0, GAME_W, 220)
-  g.fillStyle(0x4a8a38, 1)
-  g.fillRect(0, 220, GAME_W, GAME_H - 220)
-  g.fillStyle(0xc9a24a, 1)
-  g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 640, 220)
-  g.fillStyle(0xb89040, 1)
-  g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 560, 180)
-  g.lineStyle(2, 0xffffff, 0.35)
-  g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 40, 560, 180)
-  return g
-}
-
 export const ARENA_FAR_Y = 330
 export const ARENA_NEAR_Y = 620
 
-/** Échelle 2.5D selon la profondeur (Y) */
 export function depthScale(y: number, base = 1): number {
   const t = Phaser.Math.Clamp((y - ARENA_FAR_Y) / (ARENA_NEAR_Y - ARENA_FAR_Y), 0, 1)
   return base * Phaser.Math.Linear(0.72, 1.28, t)
 }
 
-export function flashWhite(scene: Phaser.Scene, duration = 120) {
-  const fx = scene.add
-    .rectangle(0, 0, GAME_W, GAME_H, Theme.white, 0.55)
-    .setOrigin(0)
-    .setDepth(5000)
-    .setScrollFactor(0)
-  scene.tweens.add({
-    targets: fx,
-    alpha: 0,
-    duration,
-    onComplete: () => fx.destroy(),
-  })
+/** Ombre fixe sous un héros (pas de pulse) */
+export function heroShadow(scene: Phaser.Scene, x: number, y: number) {
+  return scene.add.ellipse(x, y, 140, 28, 0x000000, 0.35).setDepth(9)
 }
 
-/** Anneau lumineux sous un héros (HOME art) */
-export function heroGlowRing(scene: Phaser.Scene, x: number, y: number, color = 0xffffff) {
-  const ring = scene.add
-    .ellipse(x, y + 18, 160, 36, color, 0.22)
-    .setDepth(9)
-  scene.tweens.add({
-    targets: ring,
-    scaleX: 1.12,
-    scaleY: 1.08,
-    alpha: 0.1,
-    duration: 1600,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut',
-  })
-  return ring
-}
-
-/** Burst de particules pour invoc haute rareté */
-export function summonBurst(scene: Phaser.Scene, x: number, y: number, color: number, count = 24) {
+/** Burst uniquement pour rareté haute */
+export function summonBurst(scene: Phaser.Scene, x: number, y: number, color: number, count = 20) {
   for (let i = 0; i < count; i++) {
     const a = (Math.PI * 2 * i) / count
-    const dist = 40 + Math.random() * 90
-    const p = scene.add.circle(x, y, 2 + Math.random() * 3, color, 0.95).setDepth(50)
+    const dist = 36 + Math.random() * 70
+    const p = scene.add.circle(x, y, 2 + Math.random() * 2.5, color, 0.9).setDepth(50)
     scene.tweens.add({
       targets: p,
       x: x + Math.cos(a) * dist,
       y: y + Math.sin(a) * dist,
       alpha: 0,
       scale: 0.2,
-      duration: 420 + Math.random() * 280,
+      duration: 380 + Math.random() * 200,
       ease: 'Cubic.easeOut',
       onComplete: () => p.destroy(),
     })
+  }
+}
+
+export function rarityFlash(scene: Phaser.Scene, stars: number) {
+  const colors: Record<number, number> = {
+    1: 0xffffff,
+    2: 0x4caf70,
+    3: 0x3b7dd8,
+    4: 0xe8b923,
+  }
+  const c = colors[stars] ?? 0xffffff
+  const fx = scene.add
+    .rectangle(0, 0, GAME_W, GAME_H, c, stars >= 4 ? 0.48 : stars >= 3 ? 0.3 : 0.14)
+    .setOrigin(0)
+    .setDepth(4000)
+  scene.tweens.add({
+    targets: fx,
+    alpha: 0,
+    duration: stars >= 4 ? 420 : 200,
+    onComplete: () => fx.destroy(),
+  })
+  if (stars >= 3) {
+    scene.cameras.main.shake(stars >= 4 ? 90 : 40, stars >= 4 ? 0.01 : 0.004)
   }
 }

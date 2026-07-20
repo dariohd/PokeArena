@@ -4,11 +4,10 @@ import { paintScene } from '../backdrop'
 import { GAME_H, GAME_W } from '../config'
 import { loadSave, resetProgress, writeSave } from '../data/pokeapi'
 import { emptyInventory, defaultMissions, emptyPity, formatPokedollars } from '../data/types'
-import { heroGlowRing } from '../fx'
+import { heroShadow } from '../fx'
 import { Theme } from '../theme'
 import { bodyText, fadeIn, goScene, makeButton, titleText } from '../ui'
 
-/** Splash : brand + CTA + héros. Pas de grosse carte. */
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('title')
@@ -16,7 +15,7 @@ export class TitleScene extends Phaser.Scene {
 
   async create() {
     const save = loadSave()
-    fadeIn(this, 0x07090e)
+    fadeIn(this)
     const heroId = save.team[0]?.id || save.starterId || 6
     const hx = GAME_W * 0.72
     const hy = GAME_H * 0.52
@@ -27,33 +26,30 @@ export class TitleScene extends Phaser.Scene {
       heroKind: 'home',
       heroX: hx,
       heroY: hy,
-      heroScale: 0.52,
+      heroScale: 0.5,
     })
-    heroGlowRing(this, hx, hy + 120, Theme.red)
+    heroShadow(this, hx, hy + 120)
 
-    // Vignette douce gauche
     const veil = this.add.graphics().setDepth(12)
-    veil.fillStyle(0x05070c, 0.58)
-    veil.fillRect(0, 0, GAME_W * 0.46, GAME_H)
+    veil.fillStyle(0x05070c, 0.55)
+    veil.fillRect(0, 0, GAME_W * 0.44, GAME_H)
 
-    const brand = titleText(this, 56, 180, 'PokeArena', {
+    titleText(this, 56, 180, 'PokeArena', {
       size: '40px',
       color: '#ffffff',
       origin: 0,
     })
       .setDepth(20)
       .setStroke('#e3350d', 4)
-      .setAlpha(0)
-    this.tweens.add({ targets: brand, alpha: 1, duration: 360, ease: 'Cubic.easeOut' })
 
-    bodyText(this, 56, 240, 'Gacha · Arène · Évolution', {
+    bodyText(this, 56, 236, 'Gacha · Arène · Évolution', {
       size: '14px',
       color: 'rgba(255,255,255,0.8)',
       origin: 0,
     }).setDepth(20)
 
     const hasSave = Boolean(save.starterId && save.team.length)
-    makeButton(this, 140, 320, hasSave ? 'Continuer' : 'Nouvelle partie', {
+    makeButton(this, 140, 310, hasSave ? 'Continuer' : 'Nouvelle partie', {
       tone: 'red',
       fontSize: '16px',
       padX: 24,
@@ -62,9 +58,9 @@ export class TitleScene extends Phaser.Scene {
     }).setDepth(30)
 
     if (hasSave) {
-      makeButton(this, 140, 380, 'Recommencer', {
+      makeButton(this, 140, 370, 'Recommencer', {
         tone: 'dark',
-        fontSize: '12px',
+        fontSize: '13px',
         padX: 14,
         padY: 8,
         onClick: () => {
@@ -94,9 +90,9 @@ export class TitleScene extends Phaser.Scene {
       bodyText(
         this,
         56,
-        430,
-        `${formatPokedollars(save.coins)} · vague ${save.bestWave} · R${save.unlockedGen}`,
-        { size: '12px', color: 'rgba(255,255,255,0.65)', origin: 0 },
+        420,
+        `${formatPokedollars(save.coins)} · vague ${save.bestWave} · gen ${save.unlockedGen}`,
+        { size: '12px', origin: 0 },
       ).setDepth(20)
     }
 

@@ -12,8 +12,8 @@ import {
   type RegionBanner,
   type RegionId,
 } from '../data/types'
-import { summonBurst } from '../fx'
-import { L, drawShell, listRow, rarityFlash } from '../layout'
+import { rarityFlash, summonBurst } from '../fx'
+import { L, drawShell, listRow } from '../layout'
 import { Theme } from '../theme'
 import { bodyText, drawPokeBall, ensureTextures, fadeIn, makeButton, starsLabel } from '../ui'
 
@@ -33,14 +33,14 @@ export class GachaScene extends Phaser.Scene {
   private ballGfx?: Phaser.GameObjects.Graphics
   private hintRing?: Phaser.GameObjects.Ellipse
   private idleBall?: Phaser.GameObjects.Graphics
-  private uiHide: Phaser.GameObjects.GameObject[] = []
+  private pullBtns: Phaser.GameObjects.Container[] = []
 
   constructor() {
     super('gacha')
   }
 
   create(data?: { bannerId?: RegionId }) {
-    fadeIn(this, 0x07090e)
+    fadeIn(this)
     this.busy = false
     this.cameras.main.setZoom(1)
     this.cameras.main.centerOn(GAME_W / 2, GAME_H / 2)
@@ -61,31 +61,21 @@ export class GachaScene extends Phaser.Scene {
     await paintScene(this, BG.gachaDark, { dim: 0.42 })
     const zone = drawShell(this, { title: 'Bannières', back: true, accent: Theme.gold })
 
-    bodyText(this, zone.x, zone.y + 8, 'Choisis une région', {
-      size: '13px',
-      color: 'rgba(255,255,255,0.6)',
-      origin: 0,
-    }).setDepth(20)
-
     banners.forEach((b, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
       const cellW = (zone.w - 24) / 2
-      const x = zone.x + col * (cellW + 12)
-      const y = zone.y + 40 + row * 70
       const pity = loadSave().gachaPityByBanner[b.id] ?? 0
-      listRow(this, x, y, cellW, 58, {
+      listRow(this, zone.x + col * (cellW + 12), zone.y + 16 + row * 68, cellW, 56, {
         title: b.nameFr,
         sub: `${b.gamesFr} · pity ${pity}/${GACHA_PITY}`,
         accent: b.color,
         onClick: () => this.scene.restart({ bannerId: b.id }),
-        depth: 14,
-        delay: 20 + i * 30,
       })
     })
 
     if (unlockedGen < 9) {
-      bodyText(this, GAME_W / 2, zone.y + zone.h - 16, 'Gagne des arènes pour débloquer d’autres régions', {
+      bodyText(this, GAME_W / 2, zone.y + zone.h - 12, 'Gagne des arènes pour débloquer d’autres régions', {
         size: '12px',
         color: 'rgba(255,255,255,0.5)',
       }).setDepth(20)
@@ -99,22 +89,16 @@ export class GachaScene extends Phaser.Scene {
     await paintScene(this, BG.gacha, { dim: 0.48 })
     drawShell(this, { title: b.nameFr, back: true, accent: b.color })
 
-    const sub = bodyText(this, GAME_W / 2, L.contentY + 14, b.gamesFr, {
-      size: '12px',
-      color: 'rgba(255,255,255,0.6)',
-    }).setDepth(20)
-
     this.status = bodyText(
       this,
       GAME_W / 2,
-      L.contentY + 38,
-      `Pity 4★ ${pity}/${GACHA_PITY} · x10 = 3★ garanti`,
+      L.contentY + 20,
+      `${b.gamesFr} · Pity 4★ ${pity}/${GACHA_PITY}`,
       { size: '13px', color: 'rgba(255,255,255,0.85)' },
     ).setDepth(20)
 
-    // Ball au repos : point focal unique
-    this.add.ellipse(GAME_W / 2, L.contentCenterY + 48, 160, 30, 0x000000, 0.28).setDepth(11)
-    this.idleBall = drawPokeBall(this, GAME_W / 2, L.contentCenterY - 4, 32).setDepth(15)
+    this.add.ellipse(GAME_W / 2, L.contentCenterY + 48, 150, 28, 0x000000, 0.28).setDepth(11)
+    this.idleBall = drawPokeBall(this, GAME_W / 2, L.contentCenterY - 4, 30).setDepth(15)
     this.tweens.add({
       targets: this.idleBall,
       y: L.contentCenterY - 10,
@@ -124,51 +108,51 @@ export class GachaScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     })
 
-    const b1 = makeButton(this, GAME_W / 2 - 110, L.dockY, `x1 · ${GACHA_BALL_COST}`, {
-      tone: 'gold',
-      fontSize: '14px',
-      padX: 18,
-      padY: 9,
-      onClick: () => void this.doPull(false),
-    }).setDepth(102)
+    // CTAs dans le contenu (dock = Retour seul)
+    const cy = L.contentY + L.contentH - 28
+    this.pullBtns = [
+      makeButton(this, GAME_W / 2 - 100, cy, `x1 · ${GACHA_BALL_COST}`, {
+        tone: 'gold',
+        fontSize: '14px',
+        padX: 18,
+        padY: 9,
+        onClick: () => void this.doPull(false),
+      }),
+      makeButton(this, GAME_W / 2 + 100, cy, `x10 · ${GACHA_MULTI_BALL_COST}`, {
+        tone: 'red',
+        fontSize: '14px',
+        padX: 18,
+        padY: 9,
+        onClick: () => void this.doPull(true),
+      }),
+    ]
+    this.pullBtns.forEach((b) => b.setDepth(22))
 
-    const b2 = makeButton(this, GAME_W / 2 + 110, L.dockY, `x10 · ${GACHA_MULTI_BALL_COST}`, {
-      tone: 'red',
-      fontSize: '14px',
-      padX: 18,
-      padY: 9,
-      onClick: () => void this.doPull(true),
-    }).setDepth(102)
-
-    const b3 = makeButton(this, GAME_W - 110, L.dockY, 'Régions', {
+    makeButton(this, GAME_W - L.pad - 50, L.contentY + 22, 'Régions', {
       tone: 'dark',
       fontSize: '12px',
       padX: 12,
-      padY: 8,
+      padY: 6,
       onClick: () => this.scene.restart(),
-    }).setDepth(102)
-
-    this.uiHide = [sub, this.status, b1, b2, b3]
+    }).setDepth(22)
   }
 
   wait(ms: number) {
     return new Promise<void>((resolve) => this.time.delayedCall(ms, () => resolve()))
   }
 
-  setUiVisible(v: boolean) {
-    this.uiHide.forEach((o) => {
-      const any = o as Phaser.GameObjects.GameObject & { setAlpha?: (a: number) => void }
-      any.setAlpha?.(v ? 1 : 0)
-    })
+  setPullUi(v: boolean) {
+    this.pullBtns.forEach((b) => b.setAlpha(v ? 1 : 0))
+    this.status?.setAlpha(v ? 1 : 0)
   }
 
   async resetCamera() {
     const cam = this.cameras.main
     await new Promise<void>((resolve) => {
-      cam.zoomTo(1, 380, 'Cubic.easeOut', true, (_c, progress) => {
-        if (progress >= 1) resolve()
+      cam.zoomTo(1, 360, 'Cubic.easeOut', true, (_c, p) => {
+        if (p >= 1) resolve()
       })
-      cam.pan(GAME_W / 2, GAME_H / 2, 380, 'Cubic.easeOut')
+      cam.pan(GAME_W / 2, GAME_H / 2, 360, 'Cubic.easeOut')
     })
     cam.setZoom(1)
     cam.centerOn(GAME_W / 2, GAME_H / 2)
@@ -204,13 +188,13 @@ export class GachaScene extends Phaser.Scene {
     this.busy = false
   }
 
-  /** Staging : dark + zoom sur ball seule, suspense, reveal */
   async showPull(id: number, stars: number, shiny: boolean, multi: boolean) {
     this.preview?.destroy()
     this.ballGfx?.destroy()
     this.veil?.destroy()
     this.hintRing?.destroy()
     this.idleBall?.setVisible(false)
+    this.setPullUi(false)
 
     const cx = GAME_W / 2
     const cy = L.contentCenterY - 4
@@ -222,33 +206,26 @@ export class GachaScene extends Phaser.Scene {
       return mon
     })
 
-    // UI hors champ
-    this.setUiVisible(false)
-
-    // Dark full
     this.veil = this.add
       .rectangle(0, 0, GAME_W, GAME_H, 0x000000, 0)
       .setOrigin(0)
       .setDepth(30)
       .setScrollFactor(0)
-    this.tweens.add({ targets: this.veil, alpha: 0.78, duration: 320 })
+    this.tweens.add({ targets: this.veil, alpha: 0.78, duration: 300 })
 
-    // Ball seule
-    const ballR = stars >= 4 ? 38 : 32
-    this.ballGfx = drawPokeBall(this, cx, cy, ballR).setDepth(40)
+    this.ballGfx = drawPokeBall(this, cx, cy, stars >= 4 ? 36 : 30).setDepth(40)
 
-    // Zoom caméra sur la ball
-    const targetZoom = stars >= 4 ? 1.55 : stars >= 3 ? 1.42 : 1.32
-    cam.pan(cx, cy + 10, 420, 'Cubic.easeInOut')
-    cam.zoomTo(targetZoom, 420, 'Cubic.easeInOut')
-    await this.wait(420)
+    const targetZoom = stars >= 4 ? 1.5 : stars >= 3 ? 1.38 : 1.28
+    cam.pan(cx, cy + 10, 400, 'Cubic.easeInOut')
+    cam.zoomTo(targetZoom, 400, 'Cubic.easeInOut')
+    await this.wait(400)
 
-    this.hintRing = this.add.ellipse(cx, cy, 100, 100, color, 0).setDepth(39)
+    this.hintRing = this.add.ellipse(cx, cy, 96, 96, color, 0).setDepth(39)
     this.tweens.add({
       targets: this.hintRing,
-      alpha: stars >= 3 ? 0.28 : 0.1,
-      scaleX: 1.5,
-      scaleY: 1.5,
+      alpha: stars >= 3 ? 0.25 : 0.08,
+      scaleX: 1.45,
+      scaleY: 1.45,
       duration: 700,
       yoyo: true,
       repeat: -1,
@@ -256,36 +233,34 @@ export class GachaScene extends Phaser.Scene {
 
     const suspenseMs = multi
       ? stars >= 4
-        ? 2000
+        ? 1800
         : stars >= 3
-          ? 1400
-          : 800
+          ? 1200
+          : 700
       : stars >= 4
-        ? 2600
+        ? 2400
         : stars >= 3
-          ? 2000
-          : 1500
+          ? 1800
+          : 1400
 
     const shakes = stars >= 4 ? 5 : stars >= 3 ? 4 : 3
     for (let s = 0; s < shakes; s++) {
       this.tweens.add({
         targets: this.ballGfx,
-        angle: s % 2 === 0 ? 16 : -16,
-        x: cx + (s % 2 === 0 ? 7 : -7),
-        duration: 65 + s * 12,
+        angle: s % 2 === 0 ? 14 : -14,
+        x: cx + (s % 2 === 0 ? 6 : -6),
+        duration: 60 + s * 12,
         yoyo: true,
         repeat: 1,
       })
       if (s === shakes - 1 && stars >= 3) {
-        cam.shake(50, 0.004)
-        // léger push zoom avant ouverture
-        cam.zoomTo(targetZoom + 0.08, 180, 'Cubic.easeIn')
+        cam.shake(40, 0.004)
+        cam.zoomTo(targetZoom + 0.06, 160, 'Cubic.easeIn')
       }
       await this.wait(suspenseMs / shakes)
     }
 
-    await this.wait(stars >= 3 ? 220 : 100)
-
+    await this.wait(stars >= 3 ? 180 : 80)
     rarityFlash(this, stars)
     this.ballGfx.destroy()
     this.ballGfx = undefined
@@ -293,7 +268,7 @@ export class GachaScene extends Phaser.Scene {
     this.hintRing = undefined
 
     const mon = await monPromise
-    summonBurst(this, cx, cy, color, stars >= 4 ? 30 : stars >= 3 ? 18 : 8)
+    if (stars >= 3) summonBurst(this, cx, cy, color, stars >= 4 ? 28 : 14)
 
     this.preview = this.add
       .image(cx, cy, mon.homeKey)
@@ -302,40 +277,36 @@ export class GachaScene extends Phaser.Scene {
       .setAlpha(0)
     if (shiny) this.preview.setTint(0xfff1a8)
 
-    const targetScale = stars >= 4 ? 0.38 : stars >= 3 ? 0.32 : 0.26
     this.tweens.add({
       targets: this.preview,
       alpha: 1,
-      scale: targetScale,
-      duration: 380,
+      scale: stars >= 4 ? 0.36 : stars >= 3 ? 0.3 : 0.26,
+      duration: 360,
       ease: 'Back.easeOut',
     })
-
-    // Zoom out doux pour révéler le mon
-    cam.zoomTo(stars >= 4 ? 1.2 : 1.12, 500, 'Cubic.easeOut')
-
+    cam.zoomTo(stars >= 4 ? 1.18 : 1.1, 480, 'Cubic.easeOut')
     playCry(mon.cryUrl, 0.4)
     this.status.setAlpha(1)
     this.status.setText(`${mon.nameFr}${shiny ? ' chromatique' : ''}  ${starsLabel(stars)}`)
 
-    const hold = multi
-      ? stars >= 4
-        ? 850
-        : stars >= 3
-          ? 500
-          : 260
-      : stars >= 4
-        ? 1300
-        : stars >= 3
-          ? 950
-          : 650
-
-    await this.wait(hold)
+    await this.wait(
+      multi
+        ? stars >= 4
+          ? 800
+          : stars >= 3
+            ? 480
+            : 240
+        : stars >= 4
+          ? 1200
+          : stars >= 3
+            ? 900
+            : 600,
+    )
 
     this.veil?.destroy()
     this.veil = undefined
     await this.resetCamera()
-    this.setUiVisible(true)
+    this.setPullUi(true)
     this.idleBall?.setVisible(true)
   }
 }

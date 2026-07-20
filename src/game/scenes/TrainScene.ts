@@ -3,7 +3,7 @@ import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { applyTrain, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { effectiveLevel, type OwnedMon } from '../data/types'
-import { drawShell, sectionTitle } from '../layout'
+import { drawShell, sectionTitle, slotFrame } from '../layout'
 import { Theme } from '../theme'
 import {
   bodyText,
@@ -21,15 +21,19 @@ export class TrainScene extends Phaser.Scene {
   }
 
   async create() {
-    fadeIn(this, 0x07090e)
+    fadeIn(this)
     await paintScene(this, BG.train, { dim: 0.45 })
     await ensureItemIcons(this, ['rareCandy'])
     const zone = drawShell(this, { title: 'Dojo', back: true, accent: Theme.gold })
 
     const save = loadSave()
-    sectionTitle(this, zone.x, zone.y + 4, `${save.inventory.rareCandy} Super Bonbon`)
+    sectionTitle(this, zone.x, zone.y + 4, 'Entraînement')
+    bodyText(this, zone.x + 120, zone.y + 6, `${save.inventory.rareCandy} super bonbons`, {
+      size: '12px',
+      origin: 0,
+    }).setDepth(20)
     if (this.textures.exists(itemTextureKey('rareCandy'))) {
-      this.add.image(zone.x + 180, zone.y + 12, itemTextureKey('rareCandy')).setScale(1.2).setDepth(20)
+      this.add.image(zone.x + 280, zone.y + 12, itemTextureKey('rareCandy')).setScale(1.2).setDepth(20)
     }
 
     const pool: { where: 'team' | 'box'; index: number; mon: OwnedMon }[] = [
@@ -45,34 +49,33 @@ export class TrainScene extends Phaser.Scene {
     )
     const byId = new Map(details.map((m) => [m.id, m]))
 
-    const cellW = 150
-    const gap = 18
-    const startX = zone.x + 28
-    const startY = zone.y + 56
+    const cellW = 130
+    const gap = 16
+    const startX = zone.x + 20
+    const startY = zone.y + 48
 
     pool.forEach((slot, i) => {
       const mon = byId.get(slot.mon.id)
       const col = i % 7
       const row = Math.floor(i / 7)
       const x = startX + col * (cellW + gap) + cellW / 2
-      const y = startY + row * 180 + 70
+      const y = startY + row * 170 + 70
 
-      this.add.rectangle(x, y, cellW, 160, 0x000000, 0.4).setDepth(14)
-      this.add.rectangle(x, y, cellW, 160).setStrokeStyle(2, mon?.color ?? Theme.gold).setDepth(14)
+      slotFrame(this, x, y, cellW, 150, mon?.color ?? Theme.gold)
       if (mon && this.textures.exists(mon.homeKey)) {
-        this.add.image(x, y - 28, mon.homeKey).setScale(0.22).setDepth(15)
+        this.add.image(x, y - 28, mon.homeKey).setScale(0.18).setDepth(15)
       }
       bodyText(
         this,
         x,
-        y + 40,
+        y + 36,
         `${mon?.nameFr ?? '#' + slot.mon.id}\nN.${effectiveLevel(slot.mon)} ${starsLabel(slot.mon.stars)}`,
         { size: '12px', color: '#ffffff', align: 'center' },
       ).setDepth(15)
-      makeButton(this, x, y + 62, '+1', {
+      makeButton(this, x, y + 58, '+1 niv.', {
         tone: 'gold',
-        fontSize: '13px',
-        padX: 12,
+        fontSize: '12px',
+        padX: 10,
         padY: 5,
         onClick: () => {
           const next = applyTrain(loadSave(), slot.where, slot.index, mon)

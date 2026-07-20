@@ -3,16 +3,9 @@ import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { buyItem, loadSave, writeSave } from '../data/pokeapi'
 import { SHOP_CATALOG, formatPokedollars, type InventoryKey } from '../data/types'
-import { drawShell, sectionTitle } from '../layout'
-import { Theme } from '../theme'
-import {
-  bodyText,
-  ensureItemIcons,
-  fadeIn,
-  hexCss,
-  itemTextureKey,
-  makeButton,
-} from '../ui'
+import { drawShell, slotFrame } from '../layout'
+import { FONT_TITLE, Theme } from '../theme'
+import { bodyText, ensureItemIcons, fadeIn, itemTextureKey, makeButton } from '../ui'
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -20,52 +13,47 @@ export class ShopScene extends Phaser.Scene {
   }
 
   async create() {
-    fadeIn(this, 0x07090e)
+    fadeIn(this)
     await paintScene(this, BG.shop, { dim: 0.42 })
     await ensureItemIcons(this)
     const zone = drawShell(this, { title: 'Poké Mart', back: true, accent: Theme.blue })
-    sectionTitle(this, zone.x, zone.y + 4, 'Catalogue')
     const save = loadSave()
-    const colW = (zone.w - 40) / 2
+    const colW = (zone.w - 24) / 2
 
     SHOP_CATALOG.forEach((item, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const x = zone.x + col * (colW + 16)
-      const y = zone.y + 36 + row * 78
+      const cx = zone.x + col * (colW + 12) + colW / 2
+      const cy = zone.y + 42 + row * 72
       const can = save.coins >= item.price
       const owned = save.inventory[item.id as InventoryKey] ?? 0
 
-      this.add.rectangle(x + colW / 2, y + 32, colW, 68, 0x000000, 0.28).setDepth(14)
-      this.add
-        .rectangle(x + colW / 2, y + 32, colW, 68)
-        .setStrokeStyle(1.5, can ? Theme.blue : Theme.muted)
-        .setDepth(14)
+      slotFrame(this, cx, cy, colW, 60, can ? Theme.blue : Theme.muted)
 
       const key = itemTextureKey(item.id)
       if (this.textures.exists(key)) {
-        this.add.image(x + 32, y + 32, key).setScale(1.8).setDepth(15)
+        this.add.image(cx - colW / 2 + 28, cy, key).setScale(1.6).setDepth(15)
       }
 
       this.add
-        .text(x + 56, y + 14, item.label, {
-          fontFamily: '"Fredoka", "Nunito", sans-serif',
+        .text(cx - colW / 2 + 52, cy - 10, item.label, {
+          fontFamily: FONT_TITLE,
           fontSize: '14px',
-          color: can ? '#ffffff' : hexCss(Theme.muted),
+          color: can ? '#ffffff' : 'rgba(255,255,255,0.45)',
         })
         .setDepth(15)
-      bodyText(this, x + 56, y + 40, `${formatPokedollars(item.price)} · stock ${owned}`, {
+
+      bodyText(this, cx - colW / 2 + 52, cy + 12, `${formatPokedollars(item.price)} · stock ${owned}`, {
         size: '12px',
         origin: 0,
-        color: 'rgba(255,255,255,0.6)',
       }).setDepth(15)
 
       if (can) {
-        makeButton(this, x + colW - 48, y + 32, 'OK', {
+        makeButton(this, cx + colW / 2 - 48, cy, 'Acheter', {
           tone: 'blue',
           fontSize: '12px',
           padX: 10,
-          padY: 5,
+          padY: 6,
           onClick: () => {
             const next = buyItem(loadSave(), item.id, item.price)
             if (!next) return
