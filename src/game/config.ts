@@ -16,7 +16,7 @@ export function createGame(parent: string) {
     parent,
     width: GAME_W,
     height: GAME_H,
-    backgroundColor: '#070b12',
+    backgroundColor: '#7ec8e3',
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -30,8 +30,9 @@ export function createGame(parent: string) {
     },
     scene: [BootScene, TitleScene, SelectScene, HubScene, PokedexScene, ArenaScene, ResultScene],
     render: {
-      antialias: true,
-      roundPixels: false,
+      antialias: false,
+      roundPixels: true,
+      pixelArt: true,
     },
   })
 }

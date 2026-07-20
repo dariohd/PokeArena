@@ -1,13 +1,11 @@
 :root {
-  --ink: #070b12;
-  --panel: #101826;
-  --line: rgba(120, 220, 255, 0.22);
-  --cyan: #3cf0ff;
-  --gold: #ffc14a;
-  --rose: #ff4d7a;
-  --mint: #56f0b0;
-  --text: #e8f2ff;
-  --muted: #8aa0b8;
+  --ink: #2a2a3a;
+  --sky: #7ec8e3;
+  --grass: #78c850;
+  --panel: #fff8f0;
+  --red: #e03028;
+  --muted: #6a6a7a;
+  --text: #2a2a3a;
 }
 
 * {
@@ -22,11 +20,9 @@ body {
   height: 100%;
   overflow: hidden;
   background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(60, 240, 255, 0.16), transparent 55%),
-    radial-gradient(900px 500px at 100% 100%, rgba(255, 77, 122, 0.12), transparent 50%),
-    var(--ink);
+    linear-gradient(180deg, #7ec8e3 0%, #c8ecf8 55%, #78c850 55%, #58a038 100%);
   color: var(--text);
-  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-family: Nunito, system-ui, sans-serif;
 }
 
 #boot {
@@ -36,7 +32,7 @@ body {
   display: grid;
   place-content: center;
   gap: 0.6rem;
-  background: var(--ink);
+  background: linear-gradient(180deg, #7ec8e3, #c8ecf8);
   transition: opacity 0.45s ease, visibility 0.45s ease;
 }
 
@@ -47,14 +43,11 @@ body {
 }
 
 .boot__brand {
-  font-family: Bungee, cursive;
-  font-size: clamp(2rem, 6vw, 3.4rem);
-  letter-spacing: 0.04em;
-  background: linear-gradient(120deg, var(--cyan), #fff 45%, var(--gold));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-family: Fredoka, Nunito, sans-serif;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  color: var(--red);
   text-align: center;
+  text-shadow: 0 2px 0 #fff8f0;
 }
 
 .boot__sub {
@@ -71,4 +64,6 @@ body {
 #game canvas {
   display: block;
   margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(42, 42, 58, 0.25);
 }

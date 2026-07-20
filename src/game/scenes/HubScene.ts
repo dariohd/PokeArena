@@ -3,6 +3,7 @@ import { toggleMute } from '../audio'
 import { GAME_H, GAME_W } from '../config'
 import { buyItem, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { MAX_TEAM, SHOP_CATALOG, type MonSummary, type OwnedMon } from '../data/types'
+import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 
 export class HubScene extends Phaser.Scene {
   private rosterMons: MonSummary[] = []
@@ -12,34 +13,44 @@ export class HubScene extends Phaser.Scene {
   }
 
   async create() {
-    this.cameras.main.fadeIn(280, 7, 11, 18)
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x070b12).setOrigin(0)
+    this.cameras.main.fadeIn(280, 126, 200, 227)
+    const g = this.add.graphics()
+    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
+    g.fillRect(0, 0, GAME_W, GAME_H)
+    g.fillStyle(Theme.grass, 1)
+    g.fillRect(0, GAME_H - 70, GAME_W, 70)
+
     const save = loadSave()
 
     this.add
-      .text(GAME_W / 2, 36, 'CENTRE POKÉMON', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '30px',
-        color: '#ffc14a',
+      .text(GAME_W / 2, 28, 'Centre Pokémon', {
+        fontFamily: FONT_TITLE,
+        fontSize: '28px',
+        color: '#2a2a3a',
       })
       .setOrigin(0.5)
 
     this.add
-      .text(GAME_W / 2, 68, `Pièces ${save.coins} · Gen ${save.unlockedGen} · Record vague ${save.bestWave}`, {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(GAME_W / 2, 58, `${save.coins} pièces · Gen ${save.unlockedGen} · record vague ${save.bestWave}`, {
+        fontFamily: FONT_UI,
         fontSize: '13px',
-        color: '#8aa0b8',
+        color: '#6a6a7a',
       })
       .setOrigin(0.5)
 
-    const ids = [...new Set([...save.roster, ...save.team.map((t) => t.id), ...save.box.map((b) => b.id), save.starterId].filter(Boolean))]
-    this.rosterMons = ids.length ? await fetchMany(ids) : []
+    const ids = [
+      ...new Set(
+        [...save.roster, ...save.team.map((t) => t.id), ...save.box.map((b) => b.id), save.starterId].filter(Boolean),
+      ),
+    ]
+    this.rosterMons = ids.length ? await fetchMany(ids, { full: false }) : []
     for (const m of this.rosterMons) {
-      if (!this.textures.exists(m.spriteKey)) this.load.image(m.spriteKey, m.spriteUrl)
+      if (!this.textures.exists(m.battleKey)) this.load.image(m.battleKey, m.battleUrl)
     }
     if (this.load.list.size > 0) {
       await new Promise<void>((resolve) => {
         this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
+        this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
         this.load.start()
       })
     }
@@ -51,25 +62,25 @@ export class HubScene extends Phaser.Scene {
 
   drawTeam(team: OwnedMon[]) {
     this.add
-      .text(40, 100, 'ÉQUIPE (max 4) — clic pour retirer', {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(40, 90, 'Équipe (clic = retirer)', {
+        fontFamily: FONT_UI,
         fontSize: '13px',
-        color: '#3cf0ff',
+        color: '#e03028',
       })
 
     team.forEach((slot, i) => {
       const mon = this.rosterMons.find((m) => m.id === slot.id)
-      const x = 70 + i * 110
-      const y = 170
-      const bg = this.add.rectangle(x, y, 96, 110, 0x101826).setStrokeStyle(2, mon?.color ?? 0x3cf0ff)
-      if (mon && this.textures.exists(mon.spriteKey)) {
-        this.add.image(x, y - 12, mon.spriteKey).setScale(0.18)
+      const x = 80 + i * 110
+      const y = 165
+      const bg = this.add.rectangle(x, y, 96, 110, Theme.panel).setStrokeStyle(3, mon?.color ?? Theme.blue)
+      if (mon && this.textures.exists(mon.battleKey)) {
+        this.add.image(x, y - 14, mon.battleKey).setScale(1.7)
       }
       this.add
-        .text(x, y + 36, mon ? `${mon.nameFr}\nN.${slot.level}` : `#${slot.id}`, {
-          fontFamily: 'Space Grotesk, sans-serif',
+        .text(x, y + 38, mon ? `${mon.nameFr}\nN.${slot.level}` : `#${slot.id}`, {
+          fontFamily: FONT_UI,
           fontSize: '11px',
-          color: '#e8f2ff',
+          color: '#2a2a3a',
           align: 'center',
         })
         .setOrigin(0.5)
@@ -84,26 +95,24 @@ export class HubScene extends Phaser.Scene {
       })
     })
 
-    // Box add
     this.add
-      .text(40, 250, 'BOÎTE — clic pour ajouter à l’équipe', {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(40, 250, 'Boîte (clic = ajouter)', {
+        fontFamily: FONT_UI,
         fontSize: '13px',
-        color: '#8aa0b8',
+        color: '#6a6a7a',
       })
 
     const save = loadSave()
-    const box = save.box.slice(0, 10)
-    box.forEach((slot, i) => {
+    save.box.slice(0, 10).forEach((slot, i) => {
       const mon = this.rosterMons.find((m) => m.id === slot.id)
-      const x = 70 + (i % 8) * 100
-      const y = 310 + Math.floor(i / 8) * 70
+      const x = 80 + (i % 8) * 100
+      const y = 300 + Math.floor(i / 8) * 60
       const label = this.add
         .text(x, y, mon ? mon.nameFr : `#${slot.id}`, {
-          fontFamily: 'Space Grotesk, sans-serif',
+          fontFamily: FONT_UI,
           fontSize: '12px',
-          color: '#e8f2ff',
-          backgroundColor: '#152033',
+          color: '#2a2a3a',
+          backgroundColor: '#fff8f0',
           padding: { x: 8, y: 6 },
         })
         .setOrigin(0.5)
@@ -123,20 +132,22 @@ export class HubScene extends Phaser.Scene {
 
   drawShop(coins: number) {
     this.add
-      .text(560, 100, 'BOUTIQUE', {
-        fontFamily: 'Bungee, cursive',
+      .text(560, 90, 'Boutique', {
+        fontFamily: FONT_TITLE,
         fontSize: '18px',
-        color: '#56f0b0',
+        color: '#58a038',
       })
 
     SHOP_CATALOG.forEach((item, i) => {
-      const y = 140 + i * 42
+      const y = 130 + i * 40
       const can = coins >= item.price
       const row = this.add
-        .text(560, y, `${item.label} · ${item.price}💰 — ${item.desc}`, {
-          fontFamily: 'Space Grotesk, sans-serif',
+        .text(560, y, `${item.label} · ${item.price}¢`, {
+          fontFamily: FONT_UI,
           fontSize: '13px',
-          color: can ? '#e8f2ff' : '#5a6a7a',
+          color: can ? '#2a2a3a' : '#9a9aaa',
+          backgroundColor: '#fff8f0',
+          padding: { x: 8, y: 6 },
         })
         .setInteractive({ useHandCursor: can })
       if (can) {
@@ -155,33 +166,33 @@ export class HubScene extends Phaser.Scene {
     const mk = (x: number, label: string, color: string, scene: string) => {
       const t = this.add
         .text(x, 500, label, {
-          fontFamily: 'Bungee, cursive',
-          fontSize: '16px',
-          color: '#070b12',
+          fontFamily: FONT_TITLE,
+          fontSize: '15px',
+          color: '#ffffff',
           backgroundColor: color,
           padding: { x: 14, y: 10 },
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true })
       t.on('pointerdown', () => {
-        this.cameras.main.fadeOut(200, 7, 11, 18)
+        this.cameras.main.fadeOut(200, 126, 200, 227)
         this.time.delayedCall(220, () => this.scene.start(scene))
       })
     }
-    mk(180, 'ARÈNE', '#3cf0ff', 'arena')
-    mk(360, 'POKÉDEX', '#ffc14a', 'pokedex')
-    mk(540, 'MENU', '#ff4d7a', 'title')
+    mk(180, 'Arène', '#e03028', 'arena')
+    mk(360, 'Pokédex', '#3090e0', 'pokedex')
+    mk(540, 'Menu', '#58a038', 'title')
     const mute = this.add
-      .text(720, 500, loadSave().mute ? 'SON: OFF' : 'SON: ON', {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(720, 500, loadSave().mute ? 'Son off' : 'Son on', {
+        fontFamily: FONT_UI,
         fontSize: '14px',
-        color: '#e8f2ff',
+        color: '#2a2a3a',
       })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
     mute.on('pointerdown', () => {
       const m = toggleMute()
-      mute.setText(m ? 'SON: OFF' : 'SON: ON')
+      mute.setText(m ? 'Son off' : 'Son on')
     })
   }
 }

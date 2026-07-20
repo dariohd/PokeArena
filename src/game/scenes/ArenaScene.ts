@@ -90,9 +90,9 @@ export class ArenaScene extends Phaser.Scene {
       this.inventory.ultraball > 0 ? 'ultraball' : this.inventory.greatball > 0 ? 'greatball' : 'pokeball'
 
     this.chart = await ensureTypeChart()
-    this.cameras.main.fadeIn(350, 7, 11, 18)
+    this.cameras.main.fadeIn(350, 126, 200, 227)
     this.drawArena()
-    this.physics.world.setBounds(80, 90, GAME_W - 160, GAME_H - 160)
+    this.physics.world.setBounds(60, 100, GAME_W - 120, GAME_H - 170)
 
     const team = save.team.length
       ? save.team
@@ -125,102 +125,106 @@ export class ArenaScene extends Phaser.Scene {
 
   buildHud() {
     const hudBg = this.add.graphics().setDepth(1999).setScrollFactor(0)
-    hudBg.fillStyle(0x070b12, 0.55)
-    hudBg.fillRoundedRect(14, 10, 210, 72, 8)
-    hudBg.fillRoundedRect(GAME_W - 210, 10, 196, 56, 8)
-    hudBg.fillRoundedRect(14, GAME_H - 88, 320, 74, 8)
+    hudBg.fillStyle(0xfff8f0, 0.92)
+    hudBg.fillRoundedRect(12, 10, 220, 70, 10)
+    hudBg.lineStyle(3, 0xe03028, 1)
+    hudBg.strokeRoundedRect(12, 10, 220, 70, 10)
+    hudBg.fillStyle(0xfff8f0, 0.92)
+    hudBg.fillRoundedRect(GAME_W - 200, 10, 188, 50, 10)
+    hudBg.lineStyle(3, 0x3090e0, 1)
+    hudBg.strokeRoundedRect(GAME_W - 200, 10, 188, 50, 10)
+    hudBg.fillStyle(0xfff8f0, 0.94)
+    hudBg.fillRoundedRect(12, GAME_H - 86, 340, 72, 10)
+    hudBg.lineStyle(3, 0x58a038, 1)
+    hudBg.strokeRoundedRect(12, GAME_H - 86, 340, 72, 10)
 
     this.hudWave = this.add
-      .text(26, 16, '', { fontFamily: 'Bungee, cursive', fontSize: '18px', color: '#3cf0ff' })
+      .text(26, 16, '', { fontFamily: 'Fredoka, Nunito, sans-serif', fontSize: '18px', color: '#e03028' })
       .setDepth(2000)
       .setScrollFactor(0)
     this.hudCoins = this.add
-      .text(26, 42, '', { fontFamily: 'Space Grotesk, sans-serif', fontSize: '13px', color: '#ffc14a' })
+      .text(26, 40, '', { fontFamily: 'Nunito, sans-serif', fontSize: '13px', color: '#2a2a3a' })
       .setDepth(2000)
       .setScrollFactor(0)
     this.hudBall = this.add
-      .text(26, 60, '', { fontFamily: 'Space Grotesk, sans-serif', fontSize: '12px', color: '#e8f2ff' })
+      .text(26, 58, '', { fontFamily: 'Nunito, sans-serif', fontSize: '12px', color: '#6a6a7a' })
       .setDepth(2000)
       .setScrollFactor(0)
 
     this.hudCombo = this.add
-      .text(GAME_W - 24, 14, '', { fontFamily: 'Bungee, cursive', fontSize: '20px', color: '#ff4d7a' })
+      .text(GAME_W - 24, 14, '', { fontFamily: 'Fredoka, Nunito, sans-serif', fontSize: '18px', color: '#e03028' })
       .setOrigin(1, 0)
       .setDepth(2000)
       .setScrollFactor(0)
-    this.add.rectangle(GAME_W - 196, 44, 168, 6, 0x0a1018, 0.8).setOrigin(0, 0.5).setDepth(2000).setScrollFactor(0)
+    this.add.rectangle(GAME_W - 188, 44, 160, 6, 0xe8d8c8, 1).setOrigin(0, 0.5).setDepth(2000).setScrollFactor(0)
     this.comboBarFg = this.add
-      .rectangle(GAME_W - 196, 44, 0, 6, 0xff4d7a)
+      .rectangle(GAME_W - 188, 44, 0, 6, 0xe03028)
       .setOrigin(0, 0.5)
       .setDepth(2001)
       .setScrollFactor(0)
 
     this.playerNameText = this.add
-      .text(26, GAME_H - 82, '', { fontFamily: 'Space Grotesk, sans-serif', fontSize: '12px', color: '#8aa0b8' })
+      .text(26, GAME_H - 80, '', { fontFamily: 'Nunito, sans-serif', fontSize: '12px', color: '#2a2a3a' })
       .setDepth(2000)
       .setScrollFactor(0)
     this.add
-      .rectangle(26, GAME_H - 62, 216, 14, 0x0a1018, 0.9)
+      .rectangle(26, GAME_H - 58, 216, 14, 0x2a2a3a, 0.9)
       .setOrigin(0, 0.5)
-      .setStrokeStyle(1, 0x3cf0ff, 0.6)
       .setDepth(2000)
       .setScrollFactor(0)
     this.playerBarFg = this.add
-      .rectangle(28, GAME_H - 62, 212, 10, 0x56f0b0)
+      .rectangle(28, GAME_H - 58, 212, 10, 0x48c878)
       .setOrigin(0, 0.5)
       .setDepth(2001)
       .setScrollFactor(0)
     this.playerBarText = this.add
-      .text(134, GAME_H - 62, '', {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(134, GAME_H - 58, '', {
+        fontFamily: 'Nunito, sans-serif',
         fontSize: '11px',
         color: '#ffffff',
-        stroke: '#070b12',
-        strokeThickness: 3,
       })
       .setOrigin(0.5)
       .setDepth(2002)
       .setScrollFactor(0)
 
     this.hudMoves = this.add
-      .text(26, GAME_H - 42, '', {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(26, GAME_H - 38, '', {
+        fontFamily: 'Nunito, sans-serif',
         fontSize: '11px',
-        color: '#e8f2ff',
+        color: '#2a2a3a',
       })
       .setDepth(2000)
       .setScrollFactor(0)
 
     this.banner = this.add
-      .text(GAME_W / 2, 90, '', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '26px',
+      .text(GAME_W / 2, 100, '', {
+        fontFamily: 'Fredoka, Nunito, sans-serif',
+        fontSize: '28px',
         color: '#ffffff',
-        stroke: '#070b12',
-        strokeThickness: 6,
+        stroke: '#e03028',
+        strokeThickness: 8,
       })
       .setOrigin(0.5)
       .setDepth(2010)
       .setAlpha(0)
 
     this.add
-      .text(GAME_W / 2, GAME_H - 14, 'ZQSD · 1-4 attaques · C capture · H soigner · tactile OK', {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(GAME_W / 2, GAME_H - 12, 'ZQSD · 1-4 attaques · C capture · H soin', {
+        fontFamily: 'Nunito, sans-serif',
         fontSize: '11px',
-        color: '#8aa0b8',
+        color: '#2a2a3a',
       })
       .setOrigin(0.5)
       .setDepth(2000)
       .setScrollFactor(0)
 
     this.flashFx = this.add
-      .rectangle(0, 0, GAME_W, GAME_H, 0xff4d7a, 0)
+      .rectangle(0, 0, GAME_W, GAME_H, 0xe03028, 0)
       .setOrigin(0)
       .setDepth(2500)
       .setScrollFactor(0)
-      .setBlendMode(Phaser.BlendModes.ADD)
     this.vignette = this.add
-      .rectangle(0, 0, GAME_W, GAME_H, 0xff0033, 0)
+      .rectangle(0, 0, GAME_W, GAME_H, 0xe03028, 0)
       .setOrigin(0)
       .setDepth(2490)
       .setScrollFactor(0)
@@ -293,29 +297,33 @@ export class ArenaScene extends Phaser.Scene {
 
   drawArena() {
     const g = this.add.graphics()
-    g.fillStyle(0x0a1220, 1)
+    g.fillGradientStyle(0x7ec8e3, 0x7ec8e3, 0xc8ecf8, 0xc8ecf8, 1)
     g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(0x152033, 1)
-    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 30, 760, 320)
-    g.lineStyle(3, 0x3cf0ff, 0.35)
-    g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 30, 760, 320)
-    g.lineStyle(2, 0xffc14a, 0.2)
-    g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 30, 640, 250)
-    g.lineStyle(1, 0x3cf0ff, 0.06)
-    for (let i = -6; i <= 6; i++) {
-      g.lineBetween(GAME_W / 2 + i * 55, 140, GAME_W / 2 + i * 55 + 180, 420)
-      g.lineBetween(GAME_W / 2 + i * 55, 140, GAME_W / 2 + i * 55 - 180, 420)
-    }
+
+    // Soft hills
+    g.fillStyle(0x68b040, 1)
+    g.fillEllipse(180, 220, 280, 90)
+    g.fillEllipse(780, 200, 260, 80)
+
+    // Arena dirt oval (classic outdoor battle feel)
+    g.fillStyle(0x58a038, 1)
+    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 820, 300)
+    g.fillStyle(0xe0c068, 1)
+    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 45, 700, 240)
+    g.fillStyle(0xc8a850, 1)
+    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 45, 620, 200)
+    g.lineStyle(4, 0xffffff, 0.55)
+    g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 45, 620, 200)
   }
 
-  async ensureMon(id: number, levelHint = 50): Promise<MonSummary> {
-    const mon = await fetchMon(id, { levelHint })
+  async ensureMon(id: number, levelHint = 40): Promise<MonSummary> {
+    const mon = await fetchMon(id, { levelHint, full: false })
     const keys = [
-      { key: mon.spriteKey, url: mon.spriteUrl },
-      { key: `${mon.spriteKey}-shiny`, url: mon.spriteUrlShiny },
+      { key: mon.battleKey, url: mon.battleUrl },
+      { key: `${mon.battleKey}-shiny`, url: mon.battleShinyUrl },
     ]
     for (const { key, url } of keys) {
-      if (!this.textures.exists(key)) {
+      if (!this.textures.exists(key) && url) {
         await new Promise<void>((resolve) => {
           this.load.image(key, url)
           this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
@@ -333,7 +341,7 @@ export class ArenaScene extends Phaser.Scene {
     this.showBanner(boss ? `BOSS · VAGUE ${this.wave}` : `VAGUE ${this.wave}`)
     this.refreshHud()
 
-    const count = boss ? 1 : Math.min(2 + Math.floor(this.wave * 1.15), 8)
+    const count = boss ? 1 : Math.min(2 + Math.floor(this.wave * 0.9), 5)
     for (let i = 0; i < count; i++) {
       let id = randomWildId(this.unlockedGen, this.wave)
       if (boss) {
@@ -422,10 +430,22 @@ export class ArenaScene extends Phaser.Scene {
     if (this.ended || this.spawning || !this.player) return
     const now = this.time.now
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.ONE)) this.player.preferredMove = 0
-    if (Phaser.Input.Keyboard.JustDown(this.keys.TWO)) this.player.preferredMove = Math.min(1, this.player.mon.moves.length - 1)
-    if (Phaser.Input.Keyboard.JustDown(this.keys.THREE)) this.player.preferredMove = Math.min(2, this.player.mon.moves.length - 1)
-    if (Phaser.Input.Keyboard.JustDown(this.keys.FOUR)) this.player.preferredMove = Math.min(3, this.player.mon.moves.length - 1)
+    if (Phaser.Input.Keyboard.JustDown(this.keys.ONE)) {
+      this.player.preferredMove = 0
+      this.refreshHud()
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.TWO)) {
+      this.player.preferredMove = Math.min(1, this.player.mon.moves.length - 1)
+      this.refreshHud()
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.THREE)) {
+      this.player.preferredMove = Math.min(2, this.player.mon.moves.length - 1)
+      this.refreshHud()
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.FOUR)) {
+      this.player.preferredMove = Math.min(3, this.player.mon.moves.length - 1)
+      this.refreshHud()
+    }
     if (Phaser.Input.Keyboard.JustDown(this.keys.C)) this.tryCapture()
     if (Phaser.Input.Keyboard.JustDown(this.keys.H)) this.tryHeal()
 
@@ -445,7 +465,8 @@ export class ArenaScene extends Phaser.Scene {
     this.resolveCombat(now)
     ;[...this.allies, ...this.enemies].forEach((f) => f.alive && f.updateFx())
     this.updatePlayerBar()
-    this.refreshHud()
+    // HUD text only when combo/wave context needs it — not every frame
+    if (this.comboTimer > 0 || this.combo !== this.lastCombo) this.refreshHud()
 
     if (!this.player.alive) {
       this.finish(false)
@@ -711,6 +732,7 @@ export class ArenaScene extends Phaser.Scene {
     this.coins += gain
     const xp = 12 + this.wave * 4 + Math.round(e.level * 1.5)
     this.xpGained += xp
+    this.refreshHud()
     playCry(e.mon.cryUrl, 0.25)
     e.playDeathFx(() => e.destroyAll())
   }

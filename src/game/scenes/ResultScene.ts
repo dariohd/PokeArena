@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_H, GAME_W } from '../config'
 import type { ArenaResult } from '../data/types'
 import { loadSave } from '../data/pokeapi'
+import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 
 export class ResultScene extends Phaser.Scene {
   constructor() {
@@ -9,77 +10,61 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(data: ArenaResult) {
-    this.cameras.main.fadeIn(300, 7, 11, 18)
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x070b12).setOrigin(0)
+    this.cameras.main.fadeIn(280, 126, 200, 227)
+    const g = this.add.graphics()
+    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
+    g.fillRect(0, 0, GAME_W, GAME_H)
+    g.fillStyle(Theme.panel, 1)
+    g.fillRoundedRect(140, 60, 680, 400, 16)
+    g.lineStyle(4, data.won ? Theme.grassDark : Theme.red, 1)
+    g.strokeRoundedRect(140, 60, 680, 400, 16)
 
     const save = loadSave()
-    const title = data.won ? 'ARÈNE DOMINÉE' : 'K.O.'
-    const color = data.won ? '#56f0b0' : '#ff4d7a'
+    const title = data.won ? 'Victoire !' : 'K.O…'
+    const color = data.won ? '#58a038' : '#e03028'
 
     this.add
-      .text(GAME_W / 2, 80, title, {
-        fontFamily: 'Bungee, cursive',
+      .text(GAME_W / 2, 95, title, {
+        fontFamily: FONT_TITLE,
         fontSize: '40px',
         color,
-        stroke: '#070b12',
-        strokeThickness: 8,
       })
       .setOrigin(0.5)
 
     const lines = [
-      `Vague atteinte · ${data.wave}`,
-      `Pièces gagnées · ${data.coins}`,
-      `Dégâts infligés · ${data.damageDealt}`,
-      `XP gagnée · ${data.xpGained}`,
-      `Capturés · ${data.captured.length ? data.captured.map((m) => m.nameFr).join(', ') : 'aucun'}`,
-      `Coffre · ${save.coins} pièces · record vague ${save.bestWave} · Gen ${save.unlockedGen}`,
+      `Vague · ${data.wave}`,
+      `Pièces · ${data.coins}`,
+      `Dégâts · ${data.damageDealt}`,
+      `XP · ${data.xpGained}`,
+      `Captures · ${data.captured.length ? data.captured.map((m) => m.nameFr).join(', ') : 'aucune'}`,
+      `Total · ${save.coins} pièces · record ${save.bestWave}`,
     ]
 
     lines.forEach((line, i) => {
       this.add
-        .text(GAME_W / 2, 150 + i * 32, line, {
-          fontFamily: 'Space Grotesk, sans-serif',
+        .text(GAME_W / 2, 155 + i * 30, line, {
+          fontFamily: FONT_UI,
           fontSize: '15px',
-          color: '#e8f2ff',
+          color: '#2a2a3a',
         })
         .setOrigin(0.5)
     })
 
-    const again = this.add
-      .text(GAME_W / 2 - 130, 430, 'REJOUER', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '18px',
-        color: '#070b12',
-        backgroundColor: '#3cf0ff',
-        padding: { x: 16, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-
-    const hub = this.add
-      .text(GAME_W / 2 + 20, 430, 'CENTRE', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '18px',
-        color: '#070b12',
-        backgroundColor: '#56f0b0',
-        padding: { x: 16, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-
-    const menu = this.add
-      .text(GAME_W / 2 + 160, 430, 'MENU', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '18px',
-        color: '#070b12',
-        backgroundColor: '#ffc14a',
-        padding: { x: 16, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-
-    again.on('pointerdown', () => this.scene.start('arena'))
-    hub.on('pointerdown', () => this.scene.start('hub'))
-    menu.on('pointerdown', () => this.scene.start('title'))
+    const mk = (x: number, label: string, bg: string, scene: string) => {
+      const t = this.add
+        .text(x, 430, label, {
+          fontFamily: FONT_TITLE,
+          fontSize: '16px',
+          color: '#ffffff',
+          backgroundColor: bg,
+          padding: { x: 14, y: 10 },
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+      t.on('pointerdown', () => this.scene.start(scene))
+    }
+    mk(GAME_W / 2 - 140, 'Rejouer', '#3090e0', 'arena')
+    mk(GAME_W / 2, 'Centre', '#58a038', 'hub')
+    mk(GAME_W / 2 + 140, 'Menu', '#e03028', 'title')
   }
 }

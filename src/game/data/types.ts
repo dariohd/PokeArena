@@ -21,7 +21,11 @@ export type MonSummary = {
   flavorFr: string
   spriteKey: string
   spriteUrl: string
+  /** Compact battle sprite (~96px) — use in arena for performance */
+  battleKey: string
+  battleUrl: string
   spriteUrlShiny: string
+  battleShinyUrl: string
   cryUrl: string | null
   types: string[]
   hp: number
@@ -131,8 +135,8 @@ export const TYPE_FR: Record<string, string> = {
 
 export const ALL_TYPES = Object.keys(TYPE_COLORS)
 
-/** Classic starters + mascots across gens for select screen */
-export const STARTERS = [1, 4, 7, 25, 133, 152, 155, 158, 252, 255, 258, 387, 390, 393]
+/** Classic starters gens 1–3 only (fast select, clear grid) */
+export const STARTERS = [1, 4, 7, 25, 133, 152, 155, 158, 252, 255, 258]
 
 export const GEN_MAX_ID: Record<number, number> = {
   1: 151,

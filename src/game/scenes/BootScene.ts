@@ -9,22 +9,23 @@ export class BootScene extends Phaser.Scene {
 
   async create() {
     const bootSub = document.querySelector('.boot__sub')
-    if (bootSub) bootSub.textContent = 'Connexion PokéAPI…'
+    if (bootSub) bootSub.textContent = 'Préparation de l’arène…'
 
     const save = loadSave()
     try {
       await ensureTypeChart()
-      if (bootSub) bootSub.textContent = 'Chargement des figurines…'
+      if (bootSub) bootSub.textContent = 'Chargement des starters…'
       const ids = [
         ...new Set([
           ...STARTERS,
-          ...save.roster,
           ...save.team.map((t) => t.id),
-          10, 16, 19, 25, 39, 52, 54, 66, 74, 92, 129, 133,
+          ...save.roster.slice(0, 12),
+          25,
         ]),
       ]
-      const mons = await fetchMany(ids)
+      const mons = await fetchMany(ids, { full: false })
       for (const m of mons) {
+        if (!this.textures.exists(m.battleKey)) this.load.image(m.battleKey, m.battleUrl)
         if (!this.textures.exists(m.spriteKey)) this.load.image(m.spriteKey, m.spriteUrl)
       }
       if (this.load.list.size > 0) {
@@ -36,7 +37,7 @@ export class BootScene extends Phaser.Scene {
       }
     } catch (e) {
       console.warn('PokéAPI boot partial fail', e)
-      if (bootSub) bootSub.textContent = 'Mode dégradé — certaines données manquent'
+      if (bootSub) bootSub.textContent = 'Mode hors-ligne partiel…'
     }
 
     document.getElementById('boot')?.classList.add('is-hidden')

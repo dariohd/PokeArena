@@ -11,8 +11,8 @@ import {
   type SaveData,
 } from './types'
 
-const CACHE_KEY = 'pokearena-api-v3'
-const TYPE_KEY = 'pokearena-types-v1'
+const CACHE_KEY = 'pokearena-api-v4'
+const TYPE_KEY = 'pokearena-types-v2'
 const MOVE_KEY = 'pokearena-moves-v1'
 const SAVE_KEY = 'pokearena-save-v2'
 const SAVE_LEGACY = 'pokearena-save-v1'
@@ -163,6 +163,14 @@ function capitalize(name: string) {
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
+function battleSpriteUrl(id: number) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+}
+
+function battleShinyUrl(id: number) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`
+}
+
 function spriteUrl(id: number) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`
 }
@@ -184,33 +192,74 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** Instant local chart (Gen 6+) — no network on boot */
+function builtinTypeChart(): TypeChart {
+  const N = 1
+  const chart: TypeChart = {}
+  const set = (atk: string, map: Record<string, number>) => {
+    const row: Record<string, number> = {}
+    for (const t of ALL_TYPES) row[t] = N
+    Object.assign(row, map)
+    chart[atk] = row
+  }
+  set('normal', { rock: 0.5, ghost: 0, steel: 0.5 })
+  set('fire', { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 })
+  set('water', { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 })
+  set('electric', { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 })
+  set('grass', {
+    fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5,
+  })
+  set('ice', { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 })
+  set('fighting', {
+    normal: 2, ice: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, rock: 2, ghost: 0, dark: 2, steel: 2, fairy: 0.5,
+  })
+  set('poison', { grass: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0, fairy: 2 })
+  set('ground', { fire: 2, electric: 2, grass: 0.5, poison: 2, flying: 0, bug: 0.5, rock: 2, steel: 2 })
+  set('flying', { electric: 0.5, grass: 2, fighting: 2, bug: 2, rock: 0.5, steel: 0.5 })
+  set('psychic', { fighting: 2, poison: 2, psychic: 0.5, dark: 0, steel: 0.5 })
+  set('bug', {
+    fire: 0.5, grass: 2, fighting: 0.5, poison: 0.5, flying: 0.5, psychic: 2, ghost: 0.5, dark: 2, steel: 0.5, fairy: 0.5,
+  })
+  set('rock', { fire: 2, ice: 2, fighting: 0.5, ground: 0.5, flying: 2, bug: 2, steel: 0.5 })
+  set('ghost', { normal: 0, psychic: 2, ghost: 2, dark: 0.5 })
+  set('dragon', { dragon: 2, steel: 0.5, fairy: 0 })
+  set('dark', { fighting: 0.5, psychic: 2, ghost: 2, dark: 0.5, fairy: 0.5 })
+  set('steel', { fire: 0.5, water: 0.5, electric: 0.5, ice: 2, rock: 2, steel: 0.5, fairy: 2 })
+  set('fairy', { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 })
+  return chart
+}
+
 export async function ensureTypeChart(): Promise<TypeChart> {
   const cached = readTypeChart()
   if (cached && Object.keys(cached).length >= 18) return cached
-
-  const chart: TypeChart = {}
-  await Promise.all(
-    ALL_TYPES.map(async (type) => {
-      try {
-        const data = await fetchJson<{
-          damage_relations: {
-            double_damage_to: { name: string }[]
-            half_damage_to: { name: string }[]
-            no_damage_to: { name: string }[]
-          }
-        }>(`https://pokeapi.co/api/v2/type/${type}`)
-        const row: Record<string, number> = {}
-        for (const t of ALL_TYPES) row[t] = 1
-        for (const t of data.damage_relations.double_damage_to) row[t.name] = 2
-        for (const t of data.damage_relations.half_damage_to) row[t.name] = 0.5
-        for (const t of data.damage_relations.no_damage_to) row[t.name] = 0
-        chart[type] = row
-      } catch {
-        chart[type] = Object.fromEntries(ALL_TYPES.map((t) => [t, 1]))
-      }
-    }),
-  )
+  const chart = builtinTypeChart()
   writeTypeChart(chart)
+  // Refresh from API in background (non-blocking)
+  void (async () => {
+    try {
+      const live: TypeChart = {}
+      await Promise.all(
+        ALL_TYPES.map(async (type) => {
+          const data = await fetchJson<{
+            damage_relations: {
+              double_damage_to: { name: string }[]
+              half_damage_to: { name: string }[]
+              no_damage_to: { name: string }[]
+            }
+          }>(`https://pokeapi.co/api/v2/type/${type}`)
+          const row: Record<string, number> = {}
+          for (const t of ALL_TYPES) row[t] = 1
+          for (const t of data.damage_relations.double_damage_to) row[t.name] = 2
+          for (const t of data.damage_relations.half_damage_to) row[t.name] = 0.5
+          for (const t of data.damage_relations.no_damage_to) row[t.name] = 0
+          live[type] = row
+        }),
+      )
+      writeTypeChart(live)
+    } catch {
+      /* keep builtin */
+    }
+  })()
   return chart
 }
 
@@ -281,6 +330,8 @@ type PokemonApi = {
     }[]
   }[]
   sprites?: {
+    front_default?: string | null
+    front_shiny?: string | null
     other?: {
       'official-artwork'?: { front_default?: string; front_shiny?: string }
     }
@@ -344,15 +395,20 @@ function collectEvolvesTo(node: EvoNode, targetId: number, out: number[] = []): 
 
 async function resolveMoves(names: string[]): Promise<MoveSummary[]> {
   const unique = [...new Set(names)].slice(0, 4)
+  const settled = await Promise.all(
+    unique.map(async (name) => {
+      try {
+        return await fetchMove(name)
+      } catch {
+        return null
+      }
+    }),
+  )
   const moves: MoveSummary[] = []
-  for (const name of unique) {
-    try {
-      const m = await fetchMove(name)
-      if (m.damageClass !== 'status' && (m.power ?? 0) > 0) moves.push(m)
-      else if (moves.length < 2) moves.push(m)
-    } catch {
-      /* skip */
-    }
+  for (const m of settled) {
+    if (!m) continue
+    if (m.damageClass !== 'status' && (m.power ?? 0) > 0) moves.push(m)
+    else if (moves.length < 2) moves.push(m)
   }
   if (moves.length === 0) {
     moves.push({
@@ -371,10 +427,22 @@ async function resolveMoves(names: string[]): Promise<MoveSummary[]> {
   return moves.slice(0, 4)
 }
 
-export async function fetchMon(id: number, opts?: { levelHint?: number }): Promise<MonSummary> {
+export async function fetchMon(
+  id: number,
+  opts?: { levelHint?: number; full?: boolean },
+): Promise<MonSummary> {
   const cache = readCache()
   const key = String(id)
-  if (cache[key]?.moves?.length) return cache[key]
+  const cached = cache[key]
+  if (cached?.moves?.length && cached.battleUrl) {
+    if (opts?.full && cached.evolvesTo.length === 0 && cached.evolutionChainId) {
+      // upgrade later if needed
+    } else {
+      return cached
+    }
+  }
+
+  const full = opts?.full ?? false
 
   const [poke, species] = await Promise.all([
     fetchJson<PokemonApi>(`https://pokeapi.co/api/v2/pokemon/${id}`),
@@ -397,7 +465,7 @@ export async function fetchMon(id: number, opts?: { levelHint?: number }): Promi
 
   const abilityEn = poke.abilities.find((a) => !a.is_hidden)?.ability.name ?? poke.abilities[0]?.ability.name ?? ''
   let abilityNameFr = capitalize(abilityEn.replace(/-/g, ' '))
-  if (abilityEn) {
+  if (full && abilityEn) {
     try {
       const ab = await fetchJson<AbilityApi>(`https://pokeapi.co/api/v2/ability/${abilityEn}`)
       abilityNameFr = ab.names.find((n) => n.language.name === 'fr')?.name ?? abilityNameFr
@@ -408,7 +476,7 @@ export async function fetchMon(id: number, opts?: { levelHint?: number }): Promi
 
   const evoId = Number(species.evolution_chain.url.split('/').filter(Boolean).pop()) || null
   let evolvesTo: number[] = []
-  if (evoId) {
+  if (full && evoId) {
     try {
       const chain = await fetchJson<EvoChainApi>(`https://pokeapi.co/api/v2/evolution-chain/${evoId}`)
       evolvesTo = collectEvolvesTo(chain.chain, poke.id)
@@ -417,13 +485,15 @@ export async function fetchMon(id: number, opts?: { levelHint?: number }): Promi
     }
   }
 
-  const moveNames = pickLevelUpMoves(poke, opts?.levelHint ?? 50)
+  const moveNames = pickLevelUpMoves(poke, opts?.levelHint ?? 40)
   const moves = await resolveMoves(moveNames)
 
   const art =
     poke.sprites?.other?.['official-artwork']?.front_default ?? spriteUrl(poke.id)
   const artShiny =
     poke.sprites?.other?.['official-artwork']?.front_shiny ?? shinyUrl(poke.id)
+  const battle = poke.sprites?.front_default ?? battleSpriteUrl(poke.id)
+  const battleShiny = poke.sprites?.front_shiny ?? battleShinyUrl(poke.id)
 
   const mon: MonSummary = {
     id: poke.id,
@@ -431,9 +501,12 @@ export async function fetchMon(id: number, opts?: { levelHint?: number }): Promi
     nameFr,
     genusFr,
     flavorFr,
-    spriteKey: `mon-${poke.id}`,
+    spriteKey: `art-${poke.id}`,
     spriteUrl: art,
+    battleKey: `bat-${poke.id}`,
+    battleUrl: battle,
     spriteUrlShiny: artShiny,
+    battleShinyUrl: battleShiny,
     cryUrl: poke.cries?.latest ?? poke.cries?.legacy ?? null,
     types,
     hp: stats['hp'] ?? 50,
@@ -442,7 +515,7 @@ export async function fetchMon(id: number, opts?: { levelHint?: number }): Promi
     spa: stats['special-attack'] ?? 50,
     spd: stats['special-defense'] ?? 50,
     spe: stats['speed'] ?? 50,
-    color: TYPE_COLORS[primary] ?? 0x3cf0ff,
+    color: TYPE_COLORS[primary] ?? 0x3090e0,
     captureRate: species.capture_rate ?? 45,
     isLegendary: species.is_legendary,
     isMythical: species.is_mythical,
@@ -459,14 +532,13 @@ export async function fetchMon(id: number, opts?: { levelHint?: number }): Promi
   return mon
 }
 
-export async function fetchMany(ids: number[]): Promise<MonSummary[]> {
+export async function fetchMany(ids: number[], opts?: { full?: boolean }): Promise<MonSummary[]> {
   const unique = [...new Set(ids)]
   const results: MonSummary[] = []
-  // Limit concurrency to avoid PokéAPI rate limits
-  const chunk = 6
+  const chunk = 4
   for (let i = 0; i < unique.length; i += chunk) {
     const slice = unique.slice(i, i + chunk)
-    const part = await Promise.all(slice.map((id) => fetchMon(id).catch(() => null)))
+    const part = await Promise.all(slice.map((id) => fetchMon(id, opts).catch(() => null)))
     for (const m of part) if (m) results.push(m)
   }
   const map = new Map(results.map((m) => [m.id, m]))

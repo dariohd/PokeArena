@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_H, GAME_W } from '../config'
 import { loadSave, resetProgress, writeSave } from '../data/pokeapi'
 import { emptyInventory } from '../data/types'
+import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -10,58 +11,76 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     const save = loadSave()
-    this.cameras.main.fadeIn(400, 7, 11, 18)
+    this.cameras.main.fadeIn(350, 126, 200, 227)
     this.drawBackdrop()
 
+    // Pokéball motif
+    const cx = GAME_W / 2
+    const cy = 95
+    const ball = this.add.graphics()
+    ball.fillStyle(Theme.red, 1)
+    ball.fillCircle(cx, cy, 36)
+    ball.fillStyle(Theme.white, 1)
+    ball.fillCircle(cx, cy + 1, 36)
+    ball.fillStyle(Theme.red, 1)
+    ball.fillRect(cx - 36, cy - 36, 72, 37)
+    ball.lineStyle(4, Theme.ink, 1)
+    ball.strokeCircle(cx, cy, 36)
+    ball.lineBetween(cx - 36, cy, cx + 36, cy)
+    ball.fillStyle(Theme.white, 1)
+    ball.fillCircle(cx, cy, 11)
+    ball.lineStyle(3, Theme.ink, 1)
+    ball.strokeCircle(cx, cy, 11)
+    ball.fillStyle(Theme.ink, 1)
+    ball.fillCircle(cx, cy, 4)
+
     this.add
-      .text(GAME_W / 2, 110, 'POKEARENA', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '64px',
-        color: '#3cf0ff',
-        stroke: '#070b12',
-        strokeThickness: 8,
+      .text(GAME_W / 2, 160, 'PokeArena', {
+        fontFamily: FONT_TITLE,
+        fontSize: '52px',
+        color: '#2a2a3a',
       })
       .setOrigin(0.5)
 
     this.add
-      .text(GAME_W / 2, 168, 'COMBAT  ·  CAPTURE  ·  POKÉAPI LIVE', {
-        fontFamily: 'Space Grotesk, sans-serif',
-        fontSize: '15px',
-        color: '#8aa0b8',
+      .text(GAME_W / 2, 210, 'Combat · Capture · Pokédex', {
+        fontFamily: FONT_UI,
+        fontSize: '16px',
+        color: '#6a6a7a',
       })
       .setOrigin(0.5)
 
     this.add
       .text(
         GAME_W / 2,
-        230,
-        'Types, attaques, talents, cris et Pokédex FR.\nSurvive les vagues, capture, fais évoluer ton équipe.',
+        265,
+        'Affronte des vagues, capture des Pokémon\net construis ton équipe avec la PokéAPI.',
         {
-          fontFamily: 'Space Grotesk, sans-serif',
-          fontSize: '16px',
-          color: '#e8f2ff',
+          fontFamily: FONT_UI,
+          fontSize: '15px',
+          color: '#2a2a3a',
           align: 'center',
-          lineSpacing: 8,
+          lineSpacing: 6,
         },
       )
       .setOrigin(0.5)
 
     const hasSave = Boolean(save.starterId && save.team.length)
     const cta = this.add
-      .text(GAME_W / 2, 340, hasSave ? 'CONTINUER' : 'NOUVELLE PARTIE', {
-        fontFamily: 'Bungee, cursive',
-        fontSize: '26px',
-        color: '#070b12',
-        backgroundColor: '#ffc14a',
+      .text(GAME_W / 2, 360, hasSave ? 'Continuer' : 'Nouvelle partie', {
+        fontFamily: FONT_TITLE,
+        fontSize: '24px',
+        color: '#ffffff',
+        backgroundColor: '#e03028',
         padding: { x: 28, y: 14 },
       })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
 
-    cta.on('pointerover', () => cta.setScale(1.06))
+    cta.on('pointerover', () => cta.setScale(1.05))
     cta.on('pointerout', () => cta.setScale(1))
     cta.on('pointerdown', () => {
-      this.cameras.main.fadeOut(250, 7, 11, 18)
+      this.cameras.main.fadeOut(250, 126, 200, 227)
       this.time.delayedCall(260, () => {
         this.scene.start(hasSave ? 'hub' : 'select')
       })
@@ -70,22 +89,22 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(
         GAME_W / 2,
-        460,
-        `Pièces ${save.coins}   ·   Record vague ${save.bestWave}   ·   Runs ${save.runs}   ·   Gen ${save.unlockedGen}`,
+        470,
+        `${save.coins} pièces  ·  record vague ${save.bestWave}  ·  gen ${save.unlockedGen}`,
         {
-          fontFamily: 'Space Grotesk, sans-serif',
+          fontFamily: FONT_UI,
           fontSize: '13px',
-          color: '#8aa0b8',
+          color: '#6a6a7a',
         },
       )
       .setOrigin(0.5)
 
     if (hasSave) {
       const reset = this.add
-        .text(GAME_W / 2, 400, 'Nouvelle partie (reset)', {
-          fontFamily: 'Space Grotesk, sans-serif',
+        .text(GAME_W / 2, 410, 'Recommencer à zéro', {
+          fontFamily: FONT_UI,
           fontSize: '14px',
-          color: '#ff4d7a',
+          color: '#e03028',
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true })
@@ -115,17 +134,17 @@ export class TitleScene extends Phaser.Scene {
 
   drawBackdrop() {
     const g = this.add.graphics()
-    g.fillStyle(0x0a1220, 1)
+    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
     g.fillRect(0, 0, GAME_W, GAME_H)
-    for (let i = 0; i < 40; i++) {
-      const x = Phaser.Math.Between(0, GAME_W)
-      const y = Phaser.Math.Between(0, GAME_H)
-      g.fillStyle(0x3cf0ff, Phaser.Math.FloatBetween(0.04, 0.14))
-      g.fillCircle(x, y, Phaser.Math.Between(1, 3))
+    g.fillStyle(Theme.grass, 1)
+    g.fillRect(0, GAME_H - 120, GAME_W, 120)
+    g.fillStyle(Theme.grassDark, 1)
+    for (let x = 0; x < GAME_W; x += 28) {
+      g.fillTriangle(x, GAME_H - 120, x + 14, GAME_H - 142, x + 28, GAME_H - 120)
     }
-    g.lineStyle(2, 0x3cf0ff, 0.15)
-    g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 40, 620, 220)
-    g.lineStyle(2, 0xffc14a, 0.12)
-    g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 40, 520, 170)
+    g.fillStyle(Theme.panel, 0.9)
+    g.fillRoundedRect(GAME_W / 2 - 280, 145, 560, 300, 18)
+    g.lineStyle(4, Theme.red, 1)
+    g.strokeRoundedRect(GAME_W / 2 - 280, 145, 560, 300, 18)
   }
 }
