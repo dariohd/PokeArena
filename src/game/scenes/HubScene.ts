@@ -5,7 +5,6 @@ import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { claimMission, fetchMon, loadSave, writeSave } from '../data/pokeapi'
 import { GACHA_PITY, MISSION_DEFS, unlockedBanners } from '../data/types'
-import { heroShadow } from '../fx'
 import { L, drawShell, sectionTitle } from '../layout'
 import { Theme } from '../theme'
 import {
@@ -41,7 +40,6 @@ export class HubScene extends Phaser.Scene {
       heroY: hy,
       heroScale: 0.48,
     })
-    heroShadow(this, hx, hy + 118)
     await ensureItemIcons(this, ['pokeball', 'rareCandy', 'potion'])
 
     drawShell(this, { title: 'Centre', showWallet: true, accent: Theme.red })

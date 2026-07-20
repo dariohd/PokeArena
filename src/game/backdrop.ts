@@ -76,18 +76,20 @@ export async function paintScene(
       const hx = opts.heroX ?? GAME_W * 0.68
       const hy = opts.heroY ?? GAME_H * 0.55
       const scale = opts.heroScale ?? (kind === 'art' ? 0.5 : 0.42)
-      const hero = scene.add.image(hx, hy, key).setScale(scale * 0.9).setDepth(10).setAlpha(0)
+      // Ombre d’ancrage
+      scene.add.ellipse(hx, hy + scale * 220, 150 * scale * 2, 32, 0x000000, 0.32).setDepth(9)
+      const hero = scene.add.image(hx, hy, key).setScale(scale * 0.92).setDepth(10).setAlpha(0)
       scene.tweens.add({
         targets: hero,
         alpha: 1,
         scale,
-        duration: 450,
+        duration: 420,
         ease: 'Cubic.easeOut',
       })
       scene.tweens.add({
         targets: hero,
-        y: hy - 8,
-        duration: 2800,
+        y: hy - 6,
+        duration: 3000,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',

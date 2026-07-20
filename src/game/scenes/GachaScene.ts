@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { playCry } from '../audio'
+import { playCry, playSfx } from '../audio'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { GAME_H, GAME_W } from '../config'
@@ -170,9 +170,7 @@ export class GachaScene extends Phaser.Scene {
         return
       }
       writeSave(res.save)
-      for (const r of res.results) await this.showPull(r.id, r.stars, r.shiny, true)
-      const best = Math.max(...res.results.map((r) => r.stars))
-      this.status.setText(`x10 · meilleur ${starsLabel(best)}`)
+      await this.showMultiGrid(res.results)
     } else {
       const res = await pullGacha(save, this.selected.id)
       if (!res) {
@@ -181,14 +179,120 @@ export class GachaScene extends Phaser.Scene {
         return
       }
       writeSave(res.save)
-      await this.showPull(res.id, res.stars, res.shiny, false)
+      await this.showPull(res.id, res.stars, res.shiny)
     }
     const pity = loadSave().gachaPityByBanner[this.selected.id] ?? 0
     this.status.setText(`Pity 4★ ${pity}/${GACHA_PITY}`)
     this.busy = false
   }
 
-  async showPull(id: number, stars: number, shiny: boolean, multi: boolean) {
+  /** x10 : une ouverture, puis grille 5×2 */
+  async showMultiGrid(results: { id: number; stars: number; shiny: boolean }[]) {
+    this.preview?.destroy()
+    this.idleBall?.setVisible(false)
+    this.setPullUi(false)
+
+    const cx = GAME_W / 2
+    const cy = L.contentCenterY - 4
+    const best = Math.max(...results.map((r) => r.stars))
+
+    this.veil = this.add
+      .rectangle(0, 0, GAME_W, GAME_H, 0x000000, 0)
+      .setOrigin(0)
+      .setDepth(30)
+    this.tweens.add({ targets: this.veil, alpha: 0.82, duration: 280 })
+
+    this.ballGfx = drawPokeBall(this, cx, cy, 34).setDepth(40)
+    playSfx('open')
+    for (let s = 0; s < 4; s++) {
+      this.tweens.add({
+        targets: this.ballGfx,
+        angle: s % 2 === 0 ? 12 : -12,
+        duration: 70,
+        yoyo: true,
+        repeat: 1,
+      })
+      await this.wait(320)
+    }
+    rarityFlash(this, best)
+    if (best >= 3) playSfx('rare')
+    this.ballGfx.destroy()
+    this.ballGfx = undefined
+
+    const mons = await Promise.all(results.map((r) => fetchMon(r.id, { full: false })))
+    await ensureTextures(
+      this,
+      mons.map((m) => ({ key: m.homeKey, url: m.homeUrl })),
+    )
+
+    const cellW = 110
+    const cellH = 120
+    const cols = 5
+    const startX = GAME_W / 2 - ((cols - 1) * cellW) / 2
+    const startY = L.contentCenterY - 70
+
+    const grid: Phaser.GameObjects.GameObject[] = []
+    for (let i = 0; i < results.length; i++) {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x = startX + col * cellW
+      const y = startY + row * cellH
+      const r = results[i]
+      const mon = mons[i]
+      const accent = STAR_COLOR[r.stars] ?? 0xffffff
+
+      const frame = this.add.rectangle(x, y, 96, 100, 0x000000, 0.45).setDepth(42)
+      frame.setStrokeStyle(2, accent, r.stars >= 3 ? 1 : 0.55)
+      grid.push(frame)
+
+      if (this.textures.exists(mon.homeKey)) {
+        const img = this.add
+          .image(x, y - 8, mon.homeKey)
+          .setScale(0.04)
+          .setAlpha(0)
+          .setDepth(43)
+        if (r.shiny) img.setTint(0xfff1a8)
+        this.tweens.add({
+          targets: img,
+          alpha: 1,
+          scale: r.stars >= 4 ? 0.16 : 0.13,
+          duration: 220,
+          delay: i * 55,
+          ease: 'Back.easeOut',
+        })
+        grid.push(img)
+      }
+      const star = bodyText(this, x, y + 38, starsLabel(r.stars), {
+        size: '11px',
+        color: `#${accent.toString(16).padStart(6, '0')}`,
+      }).setDepth(44)
+      grid.push(star)
+    }
+
+    if (best >= 3) {
+      const bestIdx = results.findIndex((r) => r.stars === best)
+      playCry(mons[bestIdx]?.cryUrl, 0.35)
+      summonBurst(
+        this,
+        startX + (bestIdx % cols) * cellW,
+        startY + Math.floor(bestIdx / cols) * cellH,
+        STAR_COLOR[best],
+        20,
+      )
+    }
+
+    this.status.setAlpha(1)
+    this.status.setText(`x10 · meilleur ${starsLabel(best)}`)
+    await this.wait(2200)
+
+    grid.forEach((c) => c.destroy())
+    this.veil?.destroy()
+    this.veil = undefined
+    this.setPullUi(true)
+    this.idleBall?.setVisible(true)
+  }
+
+  async showPull(id: number, stars: number, shiny: boolean) {
     this.preview?.destroy()
     this.ballGfx?.destroy()
     this.veil?.destroy()
@@ -214,6 +318,7 @@ export class GachaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.veil, alpha: 0.78, duration: 300 })
 
     this.ballGfx = drawPokeBall(this, cx, cy, stars >= 4 ? 36 : 30).setDepth(40)
+    playSfx('open')
 
     const targetZoom = stars >= 4 ? 1.5 : stars >= 3 ? 1.38 : 1.28
     cam.pan(cx, cy + 10, 400, 'Cubic.easeInOut')
@@ -231,18 +336,7 @@ export class GachaScene extends Phaser.Scene {
       repeat: -1,
     })
 
-    const suspenseMs = multi
-      ? stars >= 4
-        ? 1800
-        : stars >= 3
-          ? 1200
-          : 700
-      : stars >= 4
-        ? 2400
-        : stars >= 3
-          ? 1800
-          : 1400
-
+    const suspenseMs = stars >= 4 ? 2400 : stars >= 3 ? 1800 : 1400
     const shakes = stars >= 4 ? 5 : stars >= 3 ? 4 : 3
     for (let s = 0; s < shakes; s++) {
       this.tweens.add({
@@ -262,6 +356,7 @@ export class GachaScene extends Phaser.Scene {
 
     await this.wait(stars >= 3 ? 180 : 80)
     rarityFlash(this, stars)
+    if (stars >= 3) playSfx('rare')
     this.ballGfx.destroy()
     this.ballGfx = undefined
     this.hintRing?.destroy()
@@ -289,19 +384,7 @@ export class GachaScene extends Phaser.Scene {
     this.status.setAlpha(1)
     this.status.setText(`${mon.nameFr}${shiny ? ' chromatique' : ''}  ${starsLabel(stars)}`)
 
-    await this.wait(
-      multi
-        ? stars >= 4
-          ? 800
-          : stars >= 3
-            ? 480
-            : 240
-        : stars >= 4
-          ? 1200
-          : stars >= 3
-            ? 900
-            : 600,
-    )
+    await this.wait(stars >= 4 ? 1200 : stars >= 3 ? 900 : 600)
 
     this.veil?.destroy()
     this.veil = undefined

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { playSfx } from './audio'
 import { ITEM_SPRITE, type InventoryKey } from './data/types'
 import { FONT_TITLE, FONT_UI, Theme } from './theme'
 
@@ -111,6 +112,7 @@ export function makeButton(
     scene.tweens.add({ targets: container, scale: 1, duration: 70 })
   })
   hit.on('pointerdown', () => {
+    playSfx('click')
     scene.tweens.add({
       targets: container,
       scale: 0.96,
@@ -265,6 +267,9 @@ export function makeDockIcon(
   })
   c.on('pointerover', () => scene.tweens.add({ targets: c, scale: 1.08, duration: 70 }))
   c.on('pointerout', () => scene.tweens.add({ targets: c, scale: 1, duration: 70 }))
-  c.on('pointerdown', opts.onClick)
+  c.on('pointerdown', () => {
+    playSfx('click')
+    opts.onClick()
+  })
   return c
 }

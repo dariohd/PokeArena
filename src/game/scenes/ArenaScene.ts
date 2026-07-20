@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { playCry } from '../audio'
+import { playCry, playSfx } from '../audio'
 import { GAME_H, GAME_W } from '../config'
 import { effectivenessColor, resolveAttack } from '../data/battle'
 import {
@@ -16,7 +16,6 @@ import {
 } from '../data/pokeapi'
 import {
   MAX_WAVES,
-  TYPE_COLORS,
   TYPE_FR,
   effectiveLevel,
   type ArenaResult,
@@ -27,7 +26,7 @@ import { Fighter } from '../entities/Fighter'
 import { BG_FILES, randomArenaBg } from '../assets'
 import { ARENA_FAR_Y, ARENA_NEAR_Y } from '../fx'
 import { FONT_TITLE, FONT_UI, Theme } from '../theme'
-import { hexCss } from '../ui'
+import { hexCss, makeButton } from '../ui'
 
 export class ArenaScene extends Phaser.Scene {
   private player!: Fighter
@@ -74,12 +73,17 @@ export class ArenaScene extends Phaser.Scene {
   private stick = { x: 0, y: 0 }
   private touchActive = false
   private autoMode = false
-  private autoLabel!: Phaser.GameObjects.Text
+  private autoBtn!: ReturnType<typeof makeButton>
   private moveBtns: Phaser.GameObjects.Text[] = []
   private kosThisRun = 0
+  private wavePaused = false
 
   constructor() {
     super('arena')
+  }
+
+  wait(ms: number) {
+    return new Promise<void>((resolve) => this.time.delayedCall(ms, () => resolve()))
   }
 
   async create() {
@@ -206,9 +210,9 @@ export class ArenaScene extends Phaser.Scene {
       .setScrollFactor(0)
 
     this.banner = this.add
-      .text(GAME_W / 2, 120, '', {
+      .text(GAME_W / 2, GAME_H * 0.38, '', {
         fontFamily: FONT_TITLE,
-        fontSize: '32px',
+        fontSize: '36px',
         color: '#ffffff',
         stroke: hexCss(Theme.red),
         strokeThickness: 8,
@@ -216,15 +220,6 @@ export class ArenaScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2010)
       .setAlpha(0)
-
-    this.add
-      .text(GAME_W / 2, GAME_H - 14, 'ZQSD · 1-4 · H soin · T auto', {
-        fontFamily: FONT_UI,
-        fontSize: '11px',
-        color: 'rgba(255,255,255,0.45)',
-      })
-      .setOrigin(0.5)
-      .setDepth(2000)
       .setScrollFactor(0)
 
     this.flashFx = this.add
@@ -238,19 +233,14 @@ export class ArenaScene extends Phaser.Scene {
       .setDepth(2490)
       .setScrollFactor(0)
 
-    this.autoLabel = this.add
-      .text(GAME_W - 70, 70, this.autoMode ? 'Auto' : 'Manu', {
-        fontFamily: FONT_TITLE,
-        fontSize: '12px',
-        color: '#ffffff',
-        backgroundColor: this.autoMode ? '#4f9a2e' : '#4a5568',
-        padding: { x: 8, y: 5 },
-      })
-      .setOrigin(0.5)
-      .setDepth(2100)
-      .setScrollFactor(0)
-      .setInteractive({ useHandCursor: true })
-    this.autoLabel.on('pointerdown', () => this.toggleAuto())
+    this.autoBtn = makeButton(this, GAME_W - 70, 78, this.autoMode ? 'Auto' : 'Manu', {
+      tone: this.autoMode ? 'green' : 'dark',
+      fontSize: '12px',
+      padX: 10,
+      padY: 6,
+      onClick: () => this.toggleAuto(),
+    })
+    this.autoBtn.setDepth(2100).setScrollFactor(0)
   }
 
   buildMoveButtons() {
@@ -290,8 +280,7 @@ export class ArenaScene extends Phaser.Scene {
     const save = loadSave()
     save.autoMode = this.autoMode
     writeSave(save)
-    this.autoLabel.setText(this.autoMode ? 'Auto' : 'Manu')
-    this.autoLabel.setBackgroundColor(this.autoMode ? '#4f9a2e' : '#4a5568')
+    this.autoBtn.setLabel(this.autoMode ? 'Auto' : 'Manu')
     this.showBanner(this.autoMode ? 'Mode auto' : 'Mode manuel')
   }
 
@@ -304,19 +293,14 @@ export class ArenaScene extends Phaser.Scene {
       .setInteractive()
     const knob = this.add.circle(110, GAME_H - 170, 24, 0x3b7dd8, 0.55).setScrollFactor(0).setDepth(2101)
 
-    const healBtn = this.add
-      .text(GAME_W - 80, GAME_H - 160, 'Soin', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: '#4caf70',
-        padding: { x: 14, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(2100)
-      .setInteractive({ useHandCursor: true })
-    healBtn.on('pointerdown', () => this.tryHeal())
+    const healBtn = makeButton(this, GAME_W - 80, GAME_H - 160, 'Soin', {
+      tone: 'green',
+      fontSize: '14px',
+      padX: 14,
+      padY: 10,
+      onClick: () => this.tryHeal(),
+    })
+    healBtn.setScrollFactor(0).setDepth(2100)
 
     const updateStick = (pointer: Phaser.Input.Pointer) => {
       const dx = pointer.x - zone.x
@@ -393,10 +377,30 @@ export class ArenaScene extends Phaser.Scene {
 
   async startWave() {
     this.spawning = true
-    // Boss mid-run (vague 4) + boss final (vague MAX)
+    this.wavePaused = true
     const boss = this.wave === 4 || this.wave === MAX_WAVES
-    this.showBanner(boss ? `BOSS · VAGUE ${this.wave}` : `VAGUE ${this.wave}`)
+
+    const veil = this.add
+      .rectangle(0, 0, GAME_W, GAME_H, 0x000000, 0)
+      .setOrigin(0)
+      .setDepth(2005)
+      .setScrollFactor(0)
+    this.tweens.add({ targets: veil, alpha: boss ? 0.55 : 0.32, duration: 220 })
+    playSfx(boss ? 'rare' : 'wave')
+    await this.wait(boss ? 280 : 160)
+
+    this.showBanner(boss ? `Boss · Vague ${this.wave}` : `Vague ${this.wave}`, boss ? 900 : 550)
     this.refreshHud()
+    if (boss) this.cameras.main.shake(80, 0.006)
+    await this.wait(boss ? 950 : 580)
+
+    this.tweens.add({
+      targets: veil,
+      alpha: 0,
+      duration: 200,
+      onComplete: () => veil.destroy(),
+    })
+    this.wavePaused = false
 
     const count = boss ? 1 : Math.min(1 + Math.floor(this.wave / 2), 3)
     for (let i = 0; i < count; i++) {
@@ -426,22 +430,23 @@ export class ArenaScene extends Phaser.Scene {
         targets: foe,
         alpha: { from: 0, to: 1 },
         scale: { from: 0.05, to: foe.scale },
-        duration: 120,
+        duration: 160,
       })
       if (boss) playCry(mon.cryUrl, 0.5)
     }
     this.spawning = false
   }
 
-  showBanner(text: string) {
-    this.banner.setText(text).setAlpha(1).setScale(0.85)
+  showBanner(text: string, holdMs = 500) {
+    this.banner.setText(text).setAlpha(1).setScale(0.7)
+    this.tweens.killTweensOf(this.banner)
     this.tweens.add({
       targets: this.banner,
-      scale: 1.12,
-      duration: 100,
-      yoyo: true,
+      scale: 1.05,
+      duration: 180,
+      ease: 'Back.easeOut',
       onComplete: () => {
-        this.tweens.add({ targets: this.banner, alpha: 0, delay: 220, duration: 140 })
+        this.tweens.add({ targets: this.banner, alpha: 0, delay: holdMs, duration: 180 })
       },
     })
   }
@@ -481,7 +486,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   update(_t: number, dt: number) {
-    if (this.ended || this.spawning || !this.player) return
+    if (this.ended || this.spawning || this.wavePaused || !this.player) return
     const now = this.time.now
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.ONE)) {
@@ -684,29 +689,38 @@ export class ArenaScene extends Phaser.Scene {
     }
   }
 
-  spawnHitFx(x: number, y: number, dmg: number, crit: boolean, eff: number, moveName: string) {
-    const color = eff >= 2 ? '#56f0b0' : eff === 0 ? '#8aa0b8' : crit ? '#ffc14a' : '#e8f2ff'
+  spawnHitFx(x: number, y: number, dmg: number, crit: boolean, eff: number, _moveName: string) {
+    playSfx('hit')
+    const color =
+      eff >= 2 ? hexCss(Theme.hpGreen) : eff === 0 ? '#8aa0b8' : crit ? hexCss(Theme.gold) : '#ffffff'
     const t = this.add
       .text(x, y, dmg > 0 ? `-${dmg}` : '0', {
         fontFamily: FONT_TITLE,
-        fontSize: crit ? '18px' : '14px',
+        fontSize: crit ? '20px' : '15px',
         color,
         stroke: '#070b12',
-        strokeThickness: 4,
+        strokeThickness: 5,
       })
       .setOrigin(0.5)
       .setDepth(3000)
     this.tweens.add({
       targets: t,
-      y: y - 36,
+      y: y - 40,
       alpha: 0,
-      duration: 280,
+      duration: crit ? 420 : 300,
+      ease: 'Cubic.easeOut',
       onComplete: () => t.destroy(),
     })
     const ring = this.add
-      .circle(x, y + 10, 8, TYPE_COLORS[moveName] ? 0x3cf0ff : crit ? 0xffc14a : 0x3cf0ff, 0.45)
+      .circle(x, y + 8, crit ? 10 : 6, crit ? Theme.gold : Theme.blue, crit ? 0.5 : 0.28)
       .setDepth(2999)
-    this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 140, onComplete: () => ring.destroy() })
+    this.tweens.add({
+      targets: ring,
+      scale: crit ? 2.8 : 2.2,
+      alpha: 0,
+      duration: 160,
+      onComplete: () => ring.destroy(),
+    })
   }
 
   spawnFloat(x: number, y: number, text: string, color: string) {
@@ -722,9 +736,9 @@ export class ArenaScene extends Phaser.Scene {
       .setDepth(3001)
     this.tweens.add({
       targets: t,
-      y: y - 28,
+      y: y - 24,
       alpha: 0,
-      duration: 380,
+      duration: 420,
       onComplete: () => t.destroy(),
     })
   }
@@ -743,21 +757,21 @@ export class ArenaScene extends Phaser.Scene {
       this.inventory.hyperpotion -= 1
       this.player.heal(160)
       this.persistInventory()
-      this.showBanner('HYPER POTION')
+      this.showBanner('Hyper Potion')
       return
     }
     if (this.inventory.superpotion > 0 && this.player.hp < this.player.maxHp) {
       this.inventory.superpotion -= 1
       this.player.heal(90)
       this.persistInventory()
-      this.showBanner('SUPER POTION')
+      this.showBanner('Super Potion')
       return
     }
     if (this.inventory.potion > 0 && this.player.hp < this.player.maxHp) {
       this.inventory.potion -= 1
       this.player.heal(40)
       this.persistInventory()
-      this.showBanner('POTION')
+      this.showBanner('Potion')
       return
     }
     if (this.inventory.revive > 0) {
@@ -771,7 +785,7 @@ export class ArenaScene extends Phaser.Scene {
         const body = down.body as Phaser.Physics.Arcade.Body
         body.enable = true
         this.persistInventory()
-        this.showBanner(`RAPPEL · ${down.mon.nameFr}`)
+        this.showBanner(`Rappel · ${down.mon.nameFr}`)
         return
       }
     }
@@ -781,12 +795,12 @@ export class ArenaScene extends Phaser.Scene {
 
   onEnemyDown(e: Fighter) {
     this.kosThisRun += 1
-    const comboMul = this.combo >= 10 ? 2 : this.combo >= 5 ? 1.5 : 1.15
-    const gain = Math.round((70 + this.wave * 40 + this.combo * 15 + (e.mon.isLegendary ? 300 : 0)) * comboMul)
+    const comboMul = this.combo >= 10 ? 2.2 : this.combo >= 5 ? 1.65 : 1.25
+    const gain = Math.round((90 + this.wave * 48 + this.combo * 18 + (e.mon.isLegendary ? 350 : 0)) * comboMul)
     this.coins += gain
-    const xp = 55 + this.wave * 18 + Math.round(e.level * 4) + this.combo * 3
+    const xp = 65 + this.wave * 22 + Math.round(e.level * 4) + this.combo * 4
     this.xpGained += xp
-    this.spawnFloat(e.x, e.y - 20, `+${gain} ₽`, '#f8d030')
+    this.spawnFloat(e.x, e.y - 20, `+${gain} ₽`, hexCss(Theme.gold))
     this.refreshHud()
     playCry(e.mon.cryUrl, 0.25)
     e.playDeathFx(() => e.destroyAll())
@@ -802,9 +816,8 @@ export class ArenaScene extends Phaser.Scene {
     save.runs += 1
     save.inventory = { ...this.inventory }
 
-    // Loot : Balls pour bannières · Super Bonbons pour dojo
-    const rareGain = (won ? 3 : 1) + Math.floor(this.wave / 3)
-    const ballGain = won ? 5 : 2
+    const rareGain = (won ? 4 : 1) + Math.floor(this.wave / 2)
+    const ballGain = won ? 7 : 3
     save.inventory.rareCandy += rareGain
     save.inventory.pokeball += ballGain
 

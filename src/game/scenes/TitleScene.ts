@@ -4,7 +4,6 @@ import { paintScene } from '../backdrop'
 import { GAME_H, GAME_W } from '../config'
 import { loadSave, resetProgress, writeSave } from '../data/pokeapi'
 import { emptyInventory, defaultMissions, emptyPity, formatPokedollars } from '../data/types'
-import { heroShadow } from '../fx'
 import { Theme } from '../theme'
 import { bodyText, fadeIn, goScene, makeButton, titleText } from '../ui'
 
@@ -28,7 +27,6 @@ export class TitleScene extends Phaser.Scene {
       heroY: hy,
       heroScale: 0.5,
     })
-    heroShadow(this, hx, hy + 120)
 
     const veil = this.add.graphics().setDepth(12)
     veil.fillStyle(0x05070c, 0.55)

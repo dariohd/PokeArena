@@ -321,12 +321,12 @@ export const SHOP_CATALOG: {
   price: number
   desc: string
 }[] = [
-  { id: 'pokeball', label: 'Poké Ball', price: 200, desc: 'Ticket de bannière (x1)' },
-  { id: 'potion', label: 'Potion', price: 300, desc: '+40 PV en arène' },
-  { id: 'superpotion', label: 'Super Potion', price: 700, desc: '+90 PV en arène' },
-  { id: 'hyperpotion', label: 'Hyper Potion', price: 1200, desc: '+160 PV en arène' },
-  { id: 'revive', label: 'Rappel', price: 1500, desc: 'Relance un allié K.O.' },
-  { id: 'rareCandy', label: 'Super Bonbon', price: 1000, desc: '+1 niveau (évolution possible)' },
+  { id: 'pokeball', label: 'Poké Ball', price: 150, desc: 'Ticket de bannière (x1)' },
+  { id: 'potion', label: 'Potion', price: 280, desc: '+40 PV en arène' },
+  { id: 'superpotion', label: 'Super Potion', price: 650, desc: '+90 PV en arène' },
+  { id: 'hyperpotion', label: 'Hyper Potion', price: 1100, desc: '+160 PV en arène' },
+  { id: 'revive', label: 'Rappel', price: 1400, desc: 'Relance un allié K.O.' },
+  { id: 'rareCandy', label: 'Super Bonbon', price: 900, desc: '+1 niveau (évolution possible)' },
 ]
 
 export const MISSION_DEFS: {
@@ -337,10 +337,10 @@ export const MISSION_DEFS: {
   rewardBalls: number
   rewardRareCandy: number
 }[] = [
-  { id: 'wave3', title: 'Atteindre la vague 3', target: 3, rewardCoins: 1200, rewardBalls: 3, rewardRareCandy: 2 },
-  { id: 'win1', title: 'Gagner 1 arène', target: 1, rewardCoins: 1500, rewardBalls: 4, rewardRareCandy: 2 },
-  { id: 'gacha1', title: 'Tirer 1 bannière', target: 1, rewardCoins: 600, rewardBalls: 2, rewardRareCandy: 1 },
-  { id: 'train1', title: 'Donner 1 Super Bonbon', target: 1, rewardCoins: 500, rewardBalls: 1, rewardRareCandy: 1 },
+  { id: 'wave3', title: 'Atteindre la vague 3', target: 3, rewardCoins: 1600, rewardBalls: 4, rewardRareCandy: 2 },
+  { id: 'win1', title: 'Gagner 1 arène', target: 1, rewardCoins: 2000, rewardBalls: 6, rewardRareCandy: 3 },
+  { id: 'gacha1', title: 'Tirer 1 bannière', target: 1, rewardCoins: 800, rewardBalls: 3, rewardRareCandy: 1 },
+  { id: 'train1', title: 'Donner 1 Super Bonbon', target: 1, rewardCoins: 700, rewardBalls: 2, rewardRareCandy: 1 },
 ]
 
 export function emptyInventory(): Inventory {
