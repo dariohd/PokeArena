@@ -3,6 +3,7 @@ import { playCry } from '../audio'
 import { GAME_H, GAME_W } from '../config'
 import { fetchMon, fetchMany, loadSave } from '../data/pokeapi'
 import { GEN_MAX_ID, TYPE_FR, type MonSummary } from '../data/types'
+import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 
 export class PokedexScene extends Phaser.Scene {
   private page = 0
@@ -16,45 +17,54 @@ export class PokedexScene extends Phaser.Scene {
   }
 
   async create() {
-    this.cameras.main.fadeIn(250, 7, 11, 18)
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x070b12).setOrigin(0)
+    this.cameras.main.fadeIn(250, 126, 200, 227)
+    const g = this.add.graphics()
+    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
+    g.fillRect(0, 0, GAME_W, GAME_H)
+    g.fillStyle(Theme.panel, 1)
+    g.fillRoundedRect(40, 90, 520, 380, 12)
+    g.lineStyle(4, Theme.red, 1)
+    g.strokeRoundedRect(40, 90, 520, 380, 12)
+    g.fillStyle(Theme.panel, 1)
+    g.fillRoundedRect(580, 90, 340, 380, 12)
+    g.lineStyle(4, Theme.blue, 1)
+    g.strokeRoundedRect(580, 90, 340, 380, 12)
+
     const save = loadSave()
-    const maxId = GEN_MAX_ID[Math.min(save.unlockedGen, 3)] ?? 151
+    const maxId = GEN_MAX_ID[save.unlockedGen] ?? 151
 
     this.add
-      .text(GAME_W / 2, 32, 'POKÉDEX', {
-        fontFamily: 'Bungee, cursive',
+      .text(GAME_W / 2, 28, 'Pokédex', {
+        fontFamily: FONT_TITLE,
         fontSize: '28px',
-        color: '#56f0b0',
+        color: '#2a2a3a',
       })
       .setOrigin(0.5)
 
     this.add
-      .text(GAME_W / 2, 60, `Vus ${save.seen.length} · Capturés ${save.roster.length} · Gen 1–${save.unlockedGen}`, {
-        fontFamily: 'Space Grotesk, sans-serif',
+      .text(GAME_W / 2, 58, `Vus ${save.seen.length} · Capturés ${save.roster.length} · Gen 1–${save.unlockedGen}`, {
+        fontFamily: FONT_UI,
         fontSize: '13px',
-        color: '#8aa0b8',
+        color: '#6a6a7a',
       })
       .setOrigin(0.5)
 
-    // Prefetch current page species (seen get full data; others placeholder)
     await this.loadPage(maxId)
 
-    this.detail = this.add
-      .text(620, 120, 'Sélectionne une entrée', {
-        fontFamily: 'Space Grotesk, sans-serif',
-        fontSize: '14px',
-        color: '#e8f2ff',
-        wordWrap: { width: 300 },
-        lineSpacing: 6,
-      })
+    this.detail = this.add.text(600, 110, 'Sélectionne une entrée', {
+      fontFamily: FONT_UI,
+      fontSize: '13px',
+      color: '#2a2a3a',
+      wordWrap: { width: 300 },
+      lineSpacing: 5,
+    })
 
     this.add
-      .text(120, 500, '◀ PAGE', {
-        fontFamily: 'Bungee, cursive',
+      .text(120, 500, '◀ Page', {
+        fontFamily: FONT_TITLE,
         fontSize: '14px',
-        color: '#070b12',
-        backgroundColor: '#3cf0ff',
+        color: '#ffffff',
+        backgroundColor: '#3090e0',
         padding: { x: 10, y: 8 },
       })
       .setInteractive({ useHandCursor: true })
@@ -64,11 +74,11 @@ export class PokedexScene extends Phaser.Scene {
       })
 
     this.add
-      .text(280, 500, 'PAGE ▶', {
-        fontFamily: 'Bungee, cursive',
+      .text(280, 500, 'Page ▶', {
+        fontFamily: FONT_TITLE,
         fontSize: '14px',
-        color: '#070b12',
-        backgroundColor: '#3cf0ff',
+        color: '#ffffff',
+        backgroundColor: '#3090e0',
         padding: { x: 10, y: 8 },
       })
       .setInteractive({ useHandCursor: true })
@@ -78,11 +88,11 @@ export class PokedexScene extends Phaser.Scene {
       })
 
     this.add
-      .text(800, 500, 'RETOUR', {
-        fontFamily: 'Bungee, cursive',
+      .text(800, 500, 'Retour', {
+        fontFamily: FONT_TITLE,
         fontSize: '14px',
-        color: '#070b12',
-        backgroundColor: '#ffc14a',
+        color: '#ffffff',
+        backgroundColor: '#e03028',
         padding: { x: 10, y: 8 },
       })
       .setOrigin(0.5)
@@ -91,7 +101,6 @@ export class PokedexScene extends Phaser.Scene {
   }
 
   async loadPage(maxId: number) {
-    // Clear previous entry buttons by restarting overlay layer — simple: destroy children tagged
     this.children.getAll().forEach((c) => {
       if (c.getData?.('dexEntry')) c.destroy()
     })
@@ -104,7 +113,6 @@ export class PokedexScene extends Phaser.Scene {
     }
     const ids = Array.from({ length: this.pageSize }, (_, i) => start + i).filter((id) => id <= maxId)
 
-    // Only fully fetch seen/caught to save API; unknown show silhouette
     const known = ids.filter((id) => save.seen.includes(id) || save.roster.includes(id))
     const mons = known.length ? await fetchMany(known) : []
     const map = new Map(mons.map((m) => [m.id, m]))
@@ -122,18 +130,18 @@ export class PokedexScene extends Phaser.Scene {
     ids.forEach((id, i) => {
       const col = i % 3
       const row = Math.floor(i / 3)
-      const x = 90 + col * 160
-      const y = 120 + row * 90
+      const x = 60 + col * 160
+      const y = 110 + row * 85
       const knownMon = map.get(id)
       const caught = save.roster.includes(id)
       const seen = save.seen.includes(id) || caught
       const label = seen ? (knownMon?.nameFr ?? `#${id}`) : '???'
       const t = this.add
         .text(x, y, `${String(id).padStart(3, '0')} ${label}${caught ? ' ★' : ''}`, {
-          fontFamily: 'Space Grotesk, sans-serif',
-          fontSize: '13px',
-          color: seen ? '#e8f2ff' : '#5a6a7a',
-          backgroundColor: '#101826',
+          fontFamily: FONT_UI,
+          fontSize: '12px',
+          color: seen ? '#2a2a3a' : '#6a6a7a',
+          backgroundColor: seen ? '#fff8f0' : '#e8d8c8',
           padding: { x: 8, y: 8 },
         })
         .setData('dexEntry', true)
@@ -156,7 +164,7 @@ export class PokedexScene extends Phaser.Scene {
       })
     }
     this.sprite?.destroy()
-    this.sprite = this.add.image(760, 200, mon.spriteKey).setScale(0.28).setData('dexEntry', true)
+    this.sprite = this.add.image(750, 200, mon.spriteKey).setScale(0.28).setData('dexEntry', true)
     const types = mon.types.map((t) => TYPE_FR[t] ?? t).join(' / ')
     const moves = mon.moves.map((m) => m.nameFr).join(', ')
     this.detail.setText(

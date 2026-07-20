@@ -21,7 +21,6 @@ export type MonSummary = {
   flavorFr: string
   spriteKey: string
   spriteUrl: string
-  /** Compact battle sprite (~96px) — use in arena for performance */
   battleKey: string
   battleUrl: string
   spriteUrlShiny: string
@@ -38,10 +37,11 @@ export type MonSummary = {
   captureRate: number
   isLegendary: boolean
   isMythical: boolean
+  /** 0 = forme de base, 1 = milieu, 2+ = finale */
+  evoStage: number
   generation: number
   evolutionChainId: number | null
   evolvesTo: number[]
-  /** Up to 4 battle moves */
   moves: MoveSummary[]
   abilityName: string
   abilityNameFr: string
@@ -52,41 +52,83 @@ export type OwnedMon = {
   level: number
   xp: number
   shiny: boolean
+  /** Rareté 1–3 (stade d’évolution) · 4 (légendaire / mythique) */
+  stars: number
+  /** Niveaux gagnés via Super Bonbons */
+  trainBonus: number
 }
 
 export type Inventory = {
+  /** Poké Ball = ticket de bannière. Autres Balls gardées pour saves legacy. */
   pokeball: number
   greatball: number
   ultraball: number
+  masterball: number
   potion: number
   superpotion: number
+  hyperpotion: number
   revive: number
+  /** Super Bonbon : +1 niveau */
+  rareCandy: number
+}
+
+export type MissionId = 'wave3' | 'win1' | 'gacha1' | 'train1'
+
+export type MissionState = {
+  id: MissionId
+  progress: number
+  target: number
+  claimed: boolean
+}
+
+export type RegionId =
+  | 'kanto'
+  | 'johto'
+  | 'hoenn'
+  | 'sinnoh'
+  | 'unova'
+  | 'kalos'
+  | 'alola'
+  | 'galar'
+  | 'paldea'
+
+export type RegionBanner = {
+  id: RegionId
+  gen: number
+  nameFr: string
+  gamesFr: string
+  color: number
+  minId: number
+  maxId: number
+  /** Stars / légendaires mis en avant */
+  featured: number[]
 }
 
 export type SaveData = {
-  version: 2
+  version: 4
   starterId: number
-  /** Species IDs ever owned (Pokédex caught) */
   roster: number[]
-  /** Active party for arena (max 4, first is lead) */
   team: OwnedMon[]
-  /** Box / storage beyond team */
   box: OwnedMon[]
-  /** Seen for Pokédex */
   seen: number[]
+  /** Pokédollars */
   coins: number
   bestWave: number
   runs: number
   inventory: Inventory
   unlockedGen: number
   mute: boolean
+  autoMode: boolean
+  gachaPityByBanner: Partial<Record<RegionId, number>>
+  missions: MissionState[]
+  lastMissionDay: string
 }
 
 export type ArenaResult = {
   won: boolean
   wave: number
   coins: number
-  captured: MonSummary[]
+  kos: number
   damageDealt: number
   xpGained: number
 }
@@ -135,8 +177,9 @@ export const TYPE_FR: Record<string, string> = {
 
 export const ALL_TYPES = Object.keys(TYPE_COLORS)
 
-/** Classic starters gens 1–3 only (fast select, clear grid) */
-export const STARTERS = [1, 4, 7, 25, 133, 152, 155, 158, 252, 255, 258]
+export const STARTERS = [1, 4, 7]
+/** Première invocation : Bulbizarre, Salamèche, Carapuce */
+export const STARTER_TRIO = [1, 4, 7] as const
 
 export const GEN_MAX_ID: Record<number, number> = {
   1: 151,
@@ -150,29 +193,186 @@ export const GEN_MAX_ID: Record<number, number> = {
   9: 1025,
 }
 
-export const MAX_WAVES = 15
+export const REGION_BANNERS: RegionBanner[] = [
+  {
+    id: 'kanto',
+    gen: 1,
+    nameFr: 'Kanto',
+    gamesFr: 'Rouge · Bleu · Jaune',
+    color: 0xe03028,
+    minId: 1,
+    maxId: 151,
+    featured: [6, 9, 3, 25, 143, 144, 145, 146, 150, 151],
+  },
+  {
+    id: 'johto',
+    gen: 2,
+    nameFr: 'Johto',
+    gamesFr: 'Or · Argent · Cristal',
+    color: 0xf0a030,
+    minId: 152,
+    maxId: 251,
+    featured: [154, 157, 160, 243, 244, 245, 249, 250, 251],
+  },
+  {
+    id: 'hoenn',
+    gen: 3,
+    nameFr: 'Hoenn',
+    gamesFr: 'Rubis · Saphir · Émeraude',
+    color: 0x3090e0,
+    minId: 252,
+    maxId: 386,
+    featured: [254, 257, 260, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386],
+  },
+  {
+    id: 'sinnoh',
+    gen: 4,
+    nameFr: 'Sinnoh',
+    gamesFr: 'Diamant · Perle · Platine',
+    color: 0x70a0c8,
+    minId: 387,
+    maxId: 493,
+    featured: [389, 392, 395, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493],
+  },
+  {
+    id: 'unova',
+    gen: 5,
+    nameFr: 'Unys',
+    gamesFr: 'Noir · Blanc',
+    color: 0x2a2a3a,
+    minId: 494,
+    maxId: 649,
+    featured: [497, 500, 503, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649],
+  },
+  {
+    id: 'kalos',
+    gen: 6,
+    nameFr: 'Kalos',
+    gamesFr: 'X · Y',
+    color: 0xe070a0,
+    minId: 650,
+    maxId: 721,
+    featured: [652, 655, 658, 716, 717, 718, 719, 720, 721],
+  },
+  {
+    id: 'alola',
+    gen: 7,
+    nameFr: 'Alola',
+    gamesFr: 'Soleil · Lune',
+    color: 0xf8c030,
+    minId: 722,
+    maxId: 809,
+    featured: [724, 727, 730, 785, 786, 787, 788, 789, 790, 791, 792, 800, 801, 802, 807, 808, 809],
+  },
+  {
+    id: 'galar',
+    gen: 8,
+    nameFr: 'Galar',
+    gamesFr: 'Épée · Bouclier',
+    color: 0x9050c0,
+    minId: 810,
+    maxId: 905,
+    featured: [812, 815, 818, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 905],
+  },
+  {
+    id: 'paldea',
+    gen: 9,
+    nameFr: 'Paldea',
+    gamesFr: 'Écarlate · Violet',
+    color: 0xe05040,
+    minId: 906,
+    maxId: 1025,
+    featured: [908, 911, 914, 1007, 1008, 1009, 1010, 1017, 1024, 1025],
+  },
+]
+
+export const MAX_WAVES = 8
 export const MAX_TEAM = 4
 
+/** 1 Poké Ball = 1 tirage · multi = x10 */
+export const GACHA_BALL_COST = 1
+export const GACHA_MULTI_BALL_COST = 10
+/** Compteur affiché : 4★ légendaire garanti à 50 */
+export const GACHA_PITY = 50
+export const MAX_STARS = 4
+
 export const SHOP_CATALOG = [
-  { id: 'pokeball' as const, label: 'Poké Ball', price: 50, desc: 'Capture standard' },
-  { id: 'greatball' as const, label: 'Super Ball', price: 150, desc: 'Meilleure capture' },
-  { id: 'ultraball' as const, label: 'Hyper Ball', price: 400, desc: 'Capture élevée' },
-  { id: 'potion' as const, label: 'Potion', price: 80, desc: '+40 PV en run' },
-  { id: 'superpotion' as const, label: 'Super Potion', price: 200, desc: '+90 PV en run' },
-  { id: 'revive' as const, label: 'Rappel', price: 350, desc: 'Relance un allié K.O.' },
+  { id: 'pokeball' as const, label: 'Poké Ball', price: 200, desc: 'Ticket de bannière (x1)' },
+  { id: 'potion' as const, label: 'Potion', price: 300, desc: '+40 PV en arène' },
+  { id: 'superpotion' as const, label: 'Super Potion', price: 700, desc: '+90 PV en arène' },
+  { id: 'hyperpotion' as const, label: 'Hyper Potion', price: 1200, desc: '+160 PV en arène' },
+  { id: 'revive' as const, label: 'Rappel', price: 1500, desc: 'Relance un allié K.O.' },
+  { id: 'rareCandy' as const, label: 'Super Bonbon', price: 1000, desc: '+1 niveau (évolution possible)' },
+]
+
+export const MISSION_DEFS: {
+  id: MissionId
+  title: string
+  target: number
+  rewardCoins: number
+  rewardBalls: number
+  rewardRareCandy: number
+}[] = [
+  { id: 'wave3', title: 'Atteindre la vague 3', target: 3, rewardCoins: 1200, rewardBalls: 3, rewardRareCandy: 2 },
+  { id: 'win1', title: 'Gagner 1 arène', target: 1, rewardCoins: 1500, rewardBalls: 4, rewardRareCandy: 2 },
+  { id: 'gacha1', title: 'Tirer 1 bannière', target: 1, rewardCoins: 600, rewardBalls: 2, rewardRareCandy: 1 },
+  { id: 'train1', title: 'Donner 1 Super Bonbon', target: 1, rewardCoins: 500, rewardBalls: 1, rewardRareCandy: 1 },
 ]
 
 export function emptyInventory(): Inventory {
   return {
-    pokeball: 8,
-    greatball: 2,
+    pokeball: 25,
+    greatball: 0,
     ultraball: 0,
-    potion: 2,
-    superpotion: 0,
-    revive: 0,
+    masterball: 0,
+    potion: 5,
+    superpotion: 2,
+    hyperpotion: 0,
+    revive: 1,
+    rareCandy: 5,
   }
 }
 
-export function defaultOwned(id: number, level = 5): OwnedMon {
-  return { id, level, xp: 0, shiny: false }
+export function emptyPity(): Partial<Record<RegionId, number>> {
+  return {}
+}
+
+export function defaultMissions(): MissionState[] {
+  return MISSION_DEFS.map((m) => ({
+    id: m.id,
+    progress: 0,
+    target: m.target,
+    claimed: false,
+  }))
+}
+
+export function defaultOwned(id: number, level = 5, stars = 1): OwnedMon {
+  return { id, level, xp: 0, shiny: false, stars: Math.min(MAX_STARS, Math.max(1, stars)), trainBonus: 0 }
+}
+
+/** Stade 1→1★ · 2→2★ · 3→3★ · légendaire/mythique→4★ */
+export function starsFromSpecies(opts: {
+  evoStage: number
+  isLegendary: boolean
+  isMythical: boolean
+}): number {
+  if (opts.isLegendary || opts.isMythical) return 4
+  return Math.min(3, Math.max(1, opts.evoStage))
+}
+
+export function effectiveLevel(owned: OwnedMon): number {
+  // trainBonus conservé pour saves legacy ; le Super Bonbon monte `level` directement
+  return Math.min(100, owned.level + owned.trainBonus)
+}
+
+export function formatPokedollars(n: number): string {
+  return `${n.toLocaleString('fr-FR')} ₽`
+}
+
+export function bannerForId(id: RegionId): RegionBanner | undefined {
+  return REGION_BANNERS.find((b) => b.id === id)
+}
+
+export function unlockedBanners(unlockedGen: number): RegionBanner[] {
+  return REGION_BANNERS.filter((b) => b.gen <= unlockedGen)
 }

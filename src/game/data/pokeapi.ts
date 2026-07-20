@@ -1,20 +1,37 @@
 import {
   ALL_TYPES,
+  GACHA_BALL_COST,
+  GACHA_MULTI_BALL_COST,
+  GACHA_PITY,
   GEN_MAX_ID,
+  MAX_WAVES,
+  MISSION_DEFS,
+  REGION_BANNERS,
+  STARTER_TRIO,
   TYPE_COLORS,
+  bannerForId,
+  defaultMissions,
+  defaultOwned,
   emptyInventory,
+  emptyPity,
+  starsFromSpecies,
   type Inventory,
+  type MissionId,
   type MonSummary,
   type MoveKind,
   type MoveSummary,
   type OwnedMon,
+  type RegionBanner,
+  type RegionId,
   type SaveData,
 } from './types'
 
 const CACHE_KEY = 'pokearena-api-v4'
 const TYPE_KEY = 'pokearena-types-v2'
 const MOVE_KEY = 'pokearena-moves-v1'
-const SAVE_KEY = 'pokearena-save-v2'
+const SAVE_KEY = 'pokearena-save-v4'
+const SAVE_LEGACY_V3 = 'pokearena-save-v3'
+const SAVE_LEGACY_V2 = 'pokearena-save-v2'
 const SAVE_LEGACY = 'pokearena-save-v1'
 
 type CacheBag = Record<string, MonSummary>
@@ -66,12 +83,52 @@ function writeTypeChart(chart: TypeChart) {
   }
 }
 
+function todayKey() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function normalizeOwned(m: Partial<OwnedMon> & { id: number }): OwnedMon {
+  const bonus = m.trainBonus ?? 0
+  const level = Math.min(100, (m.level ?? 5) + bonus)
+  return {
+    id: m.id,
+    level,
+    xp: m.xp ?? 0,
+    shiny: Boolean(m.shiny),
+    stars: Math.min(4, Math.max(1, m.stars ?? 1)),
+    // Folded into level — Super Bonbon increments level, not trainBonus
+    trainBonus: 0,
+  }
+}
+
 export function loadSave(): SaveData {
   try {
     const raw = localStorage.getItem(SAVE_KEY)
     if (raw) {
       const data = JSON.parse(raw) as SaveData
-      if (data.version === 2) return sanitizeSave(data)
+      if (data.version === 4) return sanitizeSave(data)
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Migrate v3
+  try {
+    const v3raw = localStorage.getItem(SAVE_LEGACY_V3)
+    if (v3raw) {
+      const old = JSON.parse(v3raw) as Record<string, unknown>
+      return migrateLegacy(old)
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Migrate v2
+  try {
+    const v2raw = localStorage.getItem(SAVE_LEGACY_V2)
+    if (v2raw) {
+      const old = JSON.parse(v2raw) as Record<string, unknown>
+      return migrateLegacy(old)
     }
   } catch {
     /* fall through */
@@ -90,17 +147,11 @@ export function loadSave(): SaveData {
       }
       const starterId = old.starterId ?? 0
       const roster = old.roster ?? []
-      const team: OwnedMon[] = starterId
-        ? [{ id: starterId, level: 8, xp: 0, shiny: false }]
-        : []
-      const migrated: SaveData = sanitizeSave({
-        version: 2,
+      return migrateLegacy({
         starterId,
         roster: [...new Set([starterId, ...roster].filter(Boolean))],
-        team,
-        box: roster
-          .filter((id) => id !== starterId)
-          .map((id) => ({ id, level: 5, xp: 0, shiny: false })),
+        team: starterId ? [defaultOwned(starterId, 12)] : [],
+        box: roster.filter((id) => id !== starterId).map((id) => defaultOwned(id, 5)),
         seen: [...new Set([starterId, ...roster].filter(Boolean))],
         coins: old.coins ?? 0,
         bestWave: old.bestWave ?? 0,
@@ -108,41 +159,112 @@ export function loadSave(): SaveData {
         inventory: emptyInventory(),
         unlockedGen: Math.min(3, Math.max(1, Math.ceil((old.bestWave ?? 1) / 5))),
         mute: false,
+        autoMode: false,
       })
-      writeSave(migrated)
-      return migrated
     }
   } catch {
     /* empty */
   }
 
   return sanitizeSave({
-    version: 2,
+    version: 4,
     starterId: 0,
     roster: [],
     team: [],
     box: [],
     seen: [],
-    coins: 0,
+    coins: 3000,
     bestWave: 0,
     runs: 0,
     inventory: emptyInventory(),
     unlockedGen: 1,
     mute: false,
+    autoMode: false,
+    gachaPityByBanner: emptyPity(),
+    missions: defaultMissions(),
+    lastMissionDay: todayKey(),
   })
 }
 
+function migrateLegacy(old: Record<string, unknown>): SaveData {
+  const inv = { ...(old.inventory as Partial<Inventory> & { candy?: number }) }
+  const oldCandy = typeof inv.candy === 'number' ? inv.candy : 0
+  delete (inv as { candy?: number }).candy
+  const rareCandy = (inv.rareCandy ?? 0) + Math.ceil(oldCandy / 2)
+  const pityOld = typeof old.gachaPity === 'number' ? old.gachaPity : 0
+  const migrated = sanitizeSave({
+    version: 4,
+    starterId: (old.starterId as number) ?? 0,
+    roster: (old.roster as number[]) ?? [],
+    team: ((old.team as OwnedMon[]) ?? []).map((t) => normalizeOwned(t)),
+    box: ((old.box as OwnedMon[]) ?? []).map((t) => normalizeOwned(t)),
+    seen: (old.seen as number[]) ?? [],
+    coins: Math.max(3000, ((old.coins as number) ?? 0) * 8),
+    bestWave: (old.bestWave as number) ?? 0,
+    runs: (old.runs as number) ?? 0,
+    inventory: {
+      ...emptyInventory(),
+      ...inv,
+      rareCandy,
+      masterball: inv.masterball ?? 0,
+      hyperpotion: inv.hyperpotion ?? 0,
+    },
+    unlockedGen: (old.unlockedGen as number) ?? 1,
+    mute: Boolean(old.mute),
+    autoMode: Boolean(old.autoMode),
+    gachaPityByBanner: { kanto: pityOld },
+    missions: defaultMissions(),
+    lastMissionDay: todayKey(),
+  })
+  writeSave(migrated)
+  return migrated
+}
+
 function sanitizeSave(s: SaveData): SaveData {
+  const day = todayKey()
+  let missions = s.missions?.length ? s.missions : defaultMissions()
+  if (s.lastMissionDay !== day) {
+    missions = defaultMissions()
+  }
+  for (const def of MISSION_DEFS) {
+    const existing = missions.find((m) => m.id === def.id)
+    if (!existing) {
+      missions.push({ id: def.id, progress: 0, target: def.target, claimed: false })
+    } else {
+      existing.target = def.target
+    }
+  }
+
+  // Migrate legacy mission ids
+  missions = missions
+    .map((m) => {
+      const legacy = m as { id: string; progress: number; target: number; claimed: boolean }
+      if (legacy.id === 'wave5') return { ...m, id: 'wave3' as MissionId, target: 3 }
+      if (legacy.id === 'capture3' || legacy.id === 'capture2') return { ...m, id: 'win1' as MissionId, target: 1, progress: 0 }
+      return m
+    })
+    .filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i)
+
+  const invRaw = { ...(s.inventory as Inventory & { candy?: number }) }
+  if (typeof invRaw.candy === 'number') {
+    invRaw.rareCandy = (invRaw.rareCandy ?? 0) + Math.ceil(invRaw.candy / 2)
+    delete invRaw.candy
+  }
+
   return {
     ...s,
-    version: 2,
+    version: 4,
     roster: [...new Set(s.roster ?? [])],
     seen: [...new Set(s.seen ?? [])],
-    team: (s.team ?? []).slice(0, 4),
-    box: s.box ?? [],
-    inventory: { ...emptyInventory(), ...(s.inventory ?? {}) },
+    team: (s.team ?? []).slice(0, 4).map((t) => normalizeOwned(t)),
+    box: (s.box ?? []).map((t) => normalizeOwned(t)),
+    inventory: { ...emptyInventory(), ...invRaw },
     unlockedGen: Math.min(9, Math.max(1, s.unlockedGen || 1)),
     mute: Boolean(s.mute),
+    autoMode: Boolean(s.autoMode),
+    gachaPityByBanner: s.gachaPityByBanner ?? emptyPity(),
+    missions,
+    lastMissionDay: day,
   }
 }
 
@@ -156,6 +278,8 @@ export function writeSave(save: SaveData) {
 
 export function resetProgress() {
   localStorage.removeItem(SAVE_KEY)
+  localStorage.removeItem(SAVE_LEGACY_V3)
+  localStorage.removeItem(SAVE_LEGACY_V2)
   localStorage.removeItem(SAVE_LEGACY)
 }
 
@@ -393,6 +517,17 @@ function collectEvolvesTo(node: EvoNode, targetId: number, out: number[] = []): 
   return out
 }
 
+/** Stade 1 (base) · 2 (milieu) · 3 (finale) */
+function findEvoStage(node: EvoNode, targetId: number, depth = 0): number | null {
+  const id = Number(node.species.url.split('/').filter(Boolean).pop())
+  if (id === targetId) return Math.min(3, depth + 1)
+  for (const child of node.evolves_to) {
+    const found = findEvoStage(child, targetId, depth + 1)
+    if (found != null) return found
+  }
+  return null
+}
+
 async function resolveMoves(names: string[]): Promise<MoveSummary[]> {
   const unique = [...new Set(names)].slice(0, 4)
   const settled = await Promise.all(
@@ -435,11 +570,25 @@ export async function fetchMon(
   const key = String(id)
   const cached = cache[key]
   if (cached?.moves?.length && cached.battleUrl) {
-    if (opts?.full && cached.evolvesTo.length === 0 && cached.evolutionChainId) {
-      // upgrade later if needed
-    } else {
+    const needsEvo =
+      (cached.evoStage == null || cached.evoStage < 1 || cached.evolvesTo.length === 0) &&
+      Boolean(cached.evolutionChainId)
+    if (!needsEvo) {
+      if (cached.evoStage == null) cached.evoStage = 1
       return cached
     }
+    try {
+      const chain = await fetchJson<EvoChainApi>(
+        `https://pokeapi.co/api/v2/evolution-chain/${cached.evolutionChainId}/`,
+      )
+      cached.evolvesTo = collectEvolvesTo(chain.chain, cached.id)
+      cached.evoStage = findEvoStage(chain.chain, cached.id) ?? 1
+      cache[key] = cached
+      writeCache(cache)
+    } catch {
+      cached.evoStage = cached.evoStage ?? 1
+    }
+    return cached
   }
 
   const full = opts?.full ?? false
@@ -476,12 +625,15 @@ export async function fetchMon(
 
   const evoId = Number(species.evolution_chain.url.split('/').filter(Boolean).pop()) || null
   let evolvesTo: number[] = []
-  if (full && evoId) {
+  let evoStage = 1
+  if (evoId) {
     try {
       const chain = await fetchJson<EvoChainApi>(`https://pokeapi.co/api/v2/evolution-chain/${evoId}`)
       evolvesTo = collectEvolvesTo(chain.chain, poke.id)
+      evoStage = findEvoStage(chain.chain, poke.id) ?? 1
     } catch {
       evolvesTo = []
+      evoStage = 1
     }
   }
 
@@ -519,6 +671,7 @@ export async function fetchMon(
     captureRate: species.capture_rate ?? 45,
     isLegendary: species.is_legendary,
     isMythical: species.is_mythical,
+    evoStage,
     generation: genFromId(poke.id),
     evolutionChainId: evoId,
     evolvesTo,
@@ -546,17 +699,30 @@ export async function fetchMany(ids: number[], opts?: { full?: boolean }): Promi
 }
 
 export function randomWildId(unlockedGen: number, wave: number): number {
-  const gen = Math.min(unlockedGen, wave <= 3 ? 1 : wave <= 7 ? Math.min(2, unlockedGen) : unlockedGen)
-  const max = GEN_MAX_ID[gen] ?? 151
-  // Bias away from legendaries early: retry if id is known mythic range loosely
-  let id = 1 + Math.floor(Math.random() * max)
-  if (wave < 10 && (id === 144 || id === 145 || id === 146 || id === 150 || id === 151)) {
-    id = 1 + Math.floor(Math.random() * Math.min(143, max))
+  // Early waves stick to earlier regions the player unlocked
+  const genCap = wave <= 2 ? 1 : wave <= 4 ? Math.min(2, unlockedGen) : unlockedGen
+  const gen = Math.max(1, Math.min(unlockedGen, genCap))
+  const banner = REGION_BANNERS.find((b) => b.gen === gen) ?? REGION_BANNERS[0]
+  const span = banner.maxId - banner.minId + 1
+  let id = banner.minId + Math.floor(Math.random() * span)
+  // Soft-avoid featured (legendaries / finals) on non-final waves
+  if (wave < MAX_WAVES && banner.featured.includes(id) && Math.random() < 0.85) {
+    id = banner.minId + Math.floor(Math.random() * Math.min(100, span))
   }
   return id
 }
 
+export function randomBossId(unlockedGen: number): number {
+  const banner = REGION_BANNERS.find((b) => b.gen === unlockedGen) ?? REGION_BANNERS[0]
+  if (banner.featured.length) {
+    return banner.featured[Math.floor(Math.random() * banner.featured.length)]
+  }
+  const span = Math.min(40, banner.maxId - banner.minId + 1)
+  return banner.maxId - Math.floor(Math.random() * span)
+}
+
 export function ballBonus(ball: keyof Inventory): number {
+  if (ball === 'masterball') return 255
   if (ball === 'ultraball') return 2
   if (ball === 'greatball') return 1.5
   return 1
@@ -564,13 +730,14 @@ export function ballBonus(ball: keyof Inventory): number {
 
 /** Simplified Gen III+ capture check */
 export function captureCheck(rate: number, hpRatio: number, ball: keyof Inventory): boolean {
-  const a = ((1 - hpRatio * 0.6) * rate * ballBonus(ball)) / 3
-  const chance = Math.min(0.95, Math.max(0.05, a / 255))
+  if (ball === 'masterball') return true
+  const a = ((1 - hpRatio * 0.45) * rate * ballBonus(ball) * 1.65) / 3
+  const chance = Math.min(0.92, Math.max(0.18, a / 255))
   return Math.random() < chance
 }
 
 export function xpToNext(level: number): number {
-  return Math.round(20 + level * 12 + level * level * 1.4)
+  return Math.round(6 + level * 3.2 + level * level * 0.28)
 }
 
 export function addXp(
@@ -581,21 +748,71 @@ export function addXp(
   const startLevel = owned.level
   let level = owned.level
   let xp = owned.xp + amount
-  let id = owned.id
-  let evolved = false
   let nextNeeded = xpToNext(level)
   while (xp >= nextNeeded && level < 100) {
     xp -= nextNeeded
     level += 1
     nextNeeded = xpToNext(level)
   }
-  if (mon.evolvesTo.length) {
-    if ((level >= 16 && startLevel < 16) || (level >= 36 && startLevel < 36)) {
-      id = mon.evolvesTo[0]
-      evolved = true
+  return maybeEvolve({ ...owned, level, xp, trainBonus: 0 }, mon, startLevel)
+}
+
+/** Super Bonbon : +1 niveau réel (canon). Évolution si seuil franchi. */
+export function applyTrain(
+  save: SaveData,
+  where: 'team' | 'box',
+  index: number,
+  monData?: MonSummary,
+): SaveData | null {
+  const list = where === 'team' ? [...save.team] : [...save.box]
+  const mon = list[index]
+  if (!mon) return null
+  if (save.inventory.rareCandy < 1) return null
+  if (mon.level >= 100) return null
+
+  const startLevel = mon.level
+  let nextOwned: OwnedMon = { ...mon, level: mon.level + 1, trainBonus: 0 }
+  let evolvedId: number | undefined
+  if (monData) {
+    const res = maybeEvolve(nextOwned, monData, startLevel)
+    nextOwned = res.owned
+    evolvedId = res.newId
+  }
+  list[index] = nextOwned
+
+  let next: SaveData = {
+    ...save,
+    team: where === 'team' ? list : save.team,
+    box: where === 'box' ? list : save.box,
+    inventory: { ...save.inventory, rareCandy: save.inventory.rareCandy - 1 },
+  }
+  if (evolvedId) {
+    next = {
+      ...next,
+      roster: [...new Set([...next.roster, evolvedId])],
+      seen: [...new Set([...next.seen, evolvedId])],
     }
   }
-  return { owned: { ...owned, id, level, xp }, evolved, newId: evolved ? id : undefined }
+  return bumpMission(next, 'train1')
+}
+
+function maybeEvolve(
+  owned: OwnedMon,
+  mon: MonSummary,
+  startLevel: number,
+): { owned: OwnedMon; evolved: boolean; newId?: number } {
+  let id = owned.id
+  let evolved = false
+  let stars = owned.stars
+  if (mon.evolvesTo.length) {
+    if ((owned.level >= 16 && startLevel < 16) || (owned.level >= 36 && startLevel < 36)) {
+      id = mon.evolvesTo[0]
+      evolved = true
+      // Stade suivant → +1★ (cap 3, légendaires restent 4)
+      if (stars < 4) stars = Math.min(3, stars + 1)
+    }
+  }
+  return { owned: { ...owned, id, stars }, evolved, newId: evolved ? id : undefined }
 }
 
 export function markSeen(save: SaveData, id: number): SaveData {
@@ -603,8 +820,15 @@ export function markSeen(save: SaveData, id: number): SaveData {
   return { ...save, seen: [...save.seen, id] }
 }
 
-export function addToRoster(save: SaveData, id: number, level = 5, shiny = false): SaveData {
-  const owned: OwnedMon = { id, level, xp: 0, shiny }
+export function addToRoster(
+  save: SaveData,
+  id: number,
+  level = 5,
+  shiny = false,
+  stars = 1,
+): SaveData {
+  const owned = defaultOwned(id, level, stars)
+  owned.shiny = shiny
   const roster = [...new Set([...save.roster, id])]
   const seen = [...new Set([...save.seen, id])]
   if (save.team.length < 4) {
@@ -624,5 +848,185 @@ export function buyItem(save: SaveData, item: keyof Inventory, price: number): S
     ...save,
     coins: save.coins - price,
     inventory: { ...save.inventory, [item]: save.inventory[item] + 1 },
+  }
+}
+
+export function bumpMission(save: SaveData, id: MissionId, by = 1): SaveData {
+  const missions = save.missions.map((m) => {
+    if (m.id !== id || m.claimed) return m
+    return { ...m, progress: Math.min(m.target, m.progress + by) }
+  })
+  return { ...save, missions }
+}
+
+export function claimMission(save: SaveData, id: MissionId): SaveData | null {
+  const def = MISSION_DEFS.find((m) => m.id === id)
+  const state = save.missions.find((m) => m.id === id)
+  if (!def || !state || state.claimed || state.progress < state.target) return null
+  return {
+    ...save,
+    coins: save.coins + def.rewardCoins,
+    inventory: {
+      ...save.inventory,
+      pokeball: save.inventory.pokeball + def.rewardBalls,
+      rareCandy: save.inventory.rareCandy + def.rewardRareCandy,
+    },
+    missions: save.missions.map((m) => (m.id === id ? { ...m, claimed: true } : m)),
+  }
+}
+
+
+export type GachaResult = {
+  id: number
+  stars: number
+  shiny: boolean
+  bannerId: RegionId
+  save: SaveData
+}
+
+function getBannerPity(save: SaveData, bannerId: RegionId): number {
+  return save.gachaPityByBanner[bannerId] ?? 0
+}
+
+function setBannerPity(save: SaveData, bannerId: RegionId, pity: number): SaveData {
+  return {
+    ...save,
+    gachaPityByBanner: { ...save.gachaPityByBanner, [bannerId]: pity },
+  }
+}
+
+function randomBannerId(banner: RegionBanner): number {
+  const span = banner.maxId - banner.minId + 1
+  if (Math.random() < 0.2 && banner.featured.length) {
+    return banner.featured[Math.floor(Math.random() * banner.featured.length)]
+  }
+  return banner.minId + Math.floor(Math.random() * span)
+}
+
+async function pickLegendaryId(banner: RegionBanner): Promise<number> {
+  const pool = [...banner.featured].sort(() => Math.random() - 0.5)
+  for (const id of pool) {
+    try {
+      const mon = await fetchMon(id, { full: true })
+      if (mon.isLegendary || mon.isMythical) return id
+    } catch {
+      /* next */
+    }
+  }
+  return pool[0] ?? banner.maxId
+}
+
+async function pickStage3Id(banner: RegionBanner): Promise<number> {
+  for (let i = 0; i < 14; i++) {
+    const id = randomBannerId(banner)
+    try {
+      const mon = await fetchMon(id, { full: true })
+      if (starsFromSpecies(mon) === 3) return id
+    } catch {
+      /* retry */
+    }
+  }
+  return banner.featured[0] ?? banner.maxId
+}
+
+async function resolveOnePull(
+  banner: RegionBanner,
+  pity: number,
+  force?: 3 | 4,
+): Promise<{ id: number; stars: number; shiny: boolean; pity: number }> {
+  const shiny = Math.random() < 0.06
+  const hitPity = force === 4 || pity >= GACHA_PITY - 1
+
+  if (hitPity) {
+    const id = await pickLegendaryId(banner)
+    return { id, stars: 4, shiny, pity: 0 }
+  }
+
+  if (force === 3) {
+    const id = await pickStage3Id(banner)
+    return { id, stars: 3, shiny, pity: pity + 1 }
+  }
+
+  const id = randomBannerId(banner)
+  const mon = await fetchMon(id, { full: true })
+  const stars = starsFromSpecies(mon)
+  return { id, stars, shiny, pity: stars >= 4 ? 0 : pity + 1 }
+}
+
+export async function pullGacha(save: SaveData, bannerId: RegionId): Promise<GachaResult | null> {
+  const banner = bannerForId(bannerId)
+  if (!banner || banner.gen > save.unlockedGen) return null
+  if (save.inventory.pokeball < GACHA_BALL_COST) return null
+
+  const pity = getBannerPity(save, bannerId)
+  const rolled = await resolveOnePull(banner, pity)
+  let next: SaveData = {
+    ...save,
+    inventory: {
+      ...save.inventory,
+      pokeball: save.inventory.pokeball - GACHA_BALL_COST,
+    },
+  }
+  next = setBannerPity(next, bannerId, rolled.pity)
+  next = addToRoster(next, rolled.id, 5 + rolled.stars * 2, rolled.shiny, rolled.stars)
+  next = bumpMission(next, 'gacha1')
+  return { id: rolled.id, stars: rolled.stars, shiny: rolled.shiny, bannerId, save: next }
+}
+
+export async function pullGachaMulti(
+  save: SaveData,
+  bannerId: RegionId,
+): Promise<{ results: Omit<GachaResult, 'save'>[]; save: SaveData } | null> {
+  const banner = bannerForId(bannerId)
+  if (!banner || banner.gen > save.unlockedGen) return null
+  if (save.inventory.pokeball < GACHA_MULTI_BALL_COST) return null
+
+  let cur: SaveData = {
+    ...save,
+    inventory: {
+      ...save.inventory,
+      pokeball: save.inventory.pokeball - GACHA_MULTI_BALL_COST,
+    },
+  }
+  const results: Omit<GachaResult, 'save'>[] = []
+  let pity = getBannerPity(cur, bannerId)
+
+  for (let i = 0; i < 10; i++) {
+    const rolled = await resolveOnePull(banner, pity)
+    pity = rolled.pity
+    cur = addToRoster(cur, rolled.id, 5 + rolled.stars * 2, rolled.shiny, rolled.stars)
+    results.push({ id: rolled.id, stars: rolled.stars, shiny: rolled.shiny, bannerId })
+  }
+
+  // Multi x10 : au moins un 3★ garanti
+  if (!results.some((r) => r.stars >= 3)) {
+    const forced = await resolveOnePull(banner, pity, 3)
+    pity = forced.pity
+    const last = results.length - 1
+    cur = addToRoster(cur, forced.id, 5 + 3 * 2, forced.shiny, 3)
+    results[last] = { id: forced.id, stars: 3, shiny: forced.shiny, bannerId }
+  }
+
+  cur = setBannerPity(cur, bannerId, pity)
+  cur = bumpMission(cur, 'gacha1')
+  return { results, save: cur }
+}
+
+/** Première invoc gratuite : Bulbizarre / Salamèche / Carapuce (1★) */
+export function pullStarterTrio(save: SaveData): { id: number; stars: number; save: SaveData } {
+  const id = STARTER_TRIO[Math.floor(Math.random() * STARTER_TRIO.length)]
+  const stars = 1
+  const owned = defaultOwned(id, 12, stars)
+  return {
+    id,
+    stars,
+    save: {
+      ...save,
+      starterId: id,
+      roster: [...new Set([...save.roster, id])],
+      seen: [...new Set([...save.seen, id])],
+      team: [owned],
+      box: save.box,
+    },
   }
 }

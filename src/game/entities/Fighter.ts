@@ -42,7 +42,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.maxHp = Math.round((50 + mon.hp * 1.5) * lvlFactor)
     this.hp = this.maxHp
     this.displayHp = this.hp
-    this.moveSpeed = 125 + mon.spe * 0.5
+    this.moveSpeed = 210 + mon.spe * 0.85
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -118,10 +118,10 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   }
 
   attackDelay(): number {
-    return Math.max(280, 760 - this.mon.spe * 2 - this.level * 3)
+    return Math.max(120, 380 - this.mon.spe * 2.4 - this.level * 4)
   }
 
-  inMeleeRange(target: Fighter, range = 70) {
+  inMeleeRange(target: Fighter, range = 88) {
     return Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y) <= range
   }
 
@@ -154,7 +154,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.scene.tweens.add({
       targets: [this, this.label, this.hpBarBg, this.hpBarFg, this.shadow],
       alpha: 0,
-      duration: 200,
+      duration: 80,
       onComplete,
     })
   }

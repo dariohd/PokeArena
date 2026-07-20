@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_H, GAME_W } from '../config'
 import type { ArenaResult } from '../data/types'
 import { loadSave } from '../data/pokeapi'
+import { formatPokedollars } from '../data/types'
 import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 
 export class ResultScene extends Phaser.Scene {
@@ -10,7 +11,7 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(data: ArenaResult) {
-    this.cameras.main.fadeIn(280, 126, 200, 227)
+    this.cameras.main.fadeIn(120, 126, 200, 227)
     const g = this.add.graphics()
     g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
     g.fillRect(0, 0, GAME_W, GAME_H)
@@ -33,11 +34,12 @@ export class ResultScene extends Phaser.Scene {
 
     const lines = [
       `Vague · ${data.wave}`,
-      `Pièces · ${data.coins}`,
+      `Pokédollars · ${formatPokedollars(data.coins)}`,
+      `K.O. · ${data.kos}`,
       `Dégâts · ${data.damageDealt}`,
       `XP · ${data.xpGained}`,
-      `Captures · ${data.captured.length ? data.captured.map((m) => m.nameFr).join(', ') : 'aucune'}`,
-      `Total · ${save.coins} pièces · record ${save.bestWave}`,
+      `Stock · ${save.inventory.pokeball} Poké Ball · ${save.inventory.rareCandy} Super Bonbon`,
+      `Total · ${formatPokedollars(save.coins)} · record ${save.bestWave}`,
     ]
 
     lines.forEach((line, i) => {

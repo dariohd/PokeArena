@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_H, GAME_W } from '../config'
 import { loadSave, resetProgress, writeSave } from '../data/pokeapi'
-import { emptyInventory } from '../data/types'
+import { emptyInventory, defaultMissions, emptyPity, formatPokedollars } from '../data/types'
 import { FONT_TITLE, FONT_UI, Theme } from '../theme'
 
 export class TitleScene extends Phaser.Scene {
@@ -43,7 +43,7 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5)
 
     this.add
-      .text(GAME_W / 2, 210, 'Combat · Capture · Pokédex', {
+      .text(GAME_W / 2, 210, 'Arène · Bannières · Dojo', {
         fontFamily: FONT_UI,
         fontSize: '16px',
         color: '#6a6a7a',
@@ -54,7 +54,7 @@ export class TitleScene extends Phaser.Scene {
       .text(
         GAME_W / 2,
         265,
-        'Affronte des vagues, capture des Pokémon\net construis ton équipe avec la PokéAPI.',
+        'Invoque des Pokémon par région, combat en arène\net monte-les avec des Super Bonbons.',
         {
           fontFamily: FONT_UI,
           fontSize: '15px',
@@ -82,7 +82,7 @@ export class TitleScene extends Phaser.Scene {
     cta.on('pointerdown', () => {
       this.cameras.main.fadeOut(250, 126, 200, 227)
       this.time.delayedCall(260, () => {
-        this.scene.start(hasSave ? 'hub' : 'select')
+        this.scene.start(hasSave ? 'hub' : 'onboard')
       })
     })
 
@@ -90,7 +90,7 @@ export class TitleScene extends Phaser.Scene {
       .text(
         GAME_W / 2,
         470,
-        `${save.coins} pièces  ·  record vague ${save.bestWave}  ·  gen ${save.unlockedGen}`,
+        `${formatPokedollars(save.coins)}  ·  record vague ${save.bestWave}  ·  région ${save.unlockedGen}`,
         {
           fontFamily: FONT_UI,
           fontSize: '13px',
@@ -111,20 +111,24 @@ export class TitleScene extends Phaser.Scene {
       reset.on('pointerdown', () => {
         resetProgress()
         writeSave({
-          version: 2,
+          version: 4,
           starterId: 0,
           roster: [],
           team: [],
           box: [],
           seen: [],
-          coins: 0,
+          coins: 3000,
           bestWave: 0,
           runs: 0,
           inventory: emptyInventory(),
           unlockedGen: 1,
           mute: save.mute,
+          autoMode: false,
+          gachaPityByBanner: emptyPity(),
+          missions: defaultMissions(),
+          lastMissionDay: new Date().toISOString().slice(0, 10),
         })
-        this.scene.start('select')
+        this.scene.start('onboard')
       })
     }
 

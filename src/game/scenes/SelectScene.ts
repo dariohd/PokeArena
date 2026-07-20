@@ -222,7 +222,7 @@ export class SelectScene extends Phaser.Scene {
     save.starterId = mon.id
     save.roster = [mon.id]
     save.seen = [mon.id]
-    save.team = [defaultOwned(mon.id, 8)]
+    save.team = [defaultOwned(mon.id, 12)]
     save.box = []
     writeSave(save)
     playCry(mon.cryUrl, 0.45)
