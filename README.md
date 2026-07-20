@@ -4,7 +4,7 @@ Combat de figurines Pokémon en **2.5D** dans le navigateur — data live **Pok�
 
 | | |
 |---|---|
-| **Prod** | https://pokearena-topaz.vercel.app |
+| **Prod** | https://arena-poke.vercel.app |
 | **Stack** | Vite · TypeScript · Phaser 3 · PokéAPI |
 
 ## Jouer
