@@ -55,7 +55,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     body.setDrag(1000, 1000)
     body.setMaxVelocity(this.moveSpeed, this.moveSpeed)
 
-    this.baseScale = 0.4 * (opts?.scaleMul ?? 1)
+    this.baseScale = 0.46 * (opts?.scaleMul ?? 1)
     this.setScale(depthScale(y, this.baseScale))
     this.setDepth(y)
     if (shiny) this.setTint(0xfff1a8)

@@ -20,54 +20,53 @@ export class ShopScene extends Phaser.Scene {
   }
 
   async create() {
-    fadeIn(this, 0x0b0d12)
+    fadeIn(this, 0x07090e)
     await paintScene(this, BG.shop, { dim: 0.42 })
     await ensureItemIcons(this)
-    const zone = drawShell(this, { title: 'Poké Mart', back: true })
-    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12 })
-    sectionTitle(this, zone.x + 16, zone.y + 14, 'Catalogue')
-
+    const zone = drawShell(this, { title: 'Poké Mart', back: true, accent: Theme.blue })
+    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12, accent: Theme.blue })
+    sectionTitle(this, zone.x + 20, zone.y + 16, 'Catalogue')
     const save = loadSave()
-    const colW = (zone.w - 48) / 2
+    const colW = (zone.w - 56) / 2
 
     SHOP_CATALOG.forEach((item, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const x = zone.x + 16 + col * (colW + 16)
-      const y = zone.y + 44 + row * 70
+      const x = zone.x + 20 + col * (colW + 16)
+      const y = zone.y + 52 + row * 88
       const can = save.coins >= item.price
       const owned = save.inventory[item.id as InventoryKey] ?? 0
 
-      this.add.rectangle(x + colW / 2, y + 30, colW, 62, 0x000000, 0.35).setDepth(14)
+      this.add.rectangle(x + colW / 2, y + 36, colW, 76, 0x000000, 0.35).setDepth(14)
       this.add
-        .rectangle(x + colW / 2, y + 30, colW, 62)
+        .rectangle(x + colW / 2, y + 36, colW, 76)
         .setStrokeStyle(2, can ? Theme.blue : Theme.muted)
         .setDepth(14)
 
       const key = itemTextureKey(item.id)
       if (this.textures.exists(key)) {
-        this.add.image(x + 28, y + 30, key).setScale(1.8).setDepth(15)
+        this.add.image(x + 36, y + 36, key).setScale(2.2).setDepth(15)
       }
 
       this.add
-        .text(x + 52, y + 14, item.label, {
+        .text(x + 64, y + 16, item.label, {
           fontFamily: '"Fredoka", "Nunito", sans-serif',
-          fontSize: '14px',
+          fontSize: '16px',
           color: can ? '#ffffff' : hexCss(Theme.muted),
         })
         .setDepth(15)
-      bodyText(this, x + 52, y + 36, `${formatPokedollars(item.price)} · stock ${owned}`, {
-        size: '11px',
+      bodyText(this, x + 64, y + 44, `${formatPokedollars(item.price)} · stock ${owned}`, {
+        size: '13px',
         origin: 0,
         color: 'rgba(255,255,255,0.65)',
       }).setDepth(15)
 
       if (can) {
-        makeButton(this, x + colW - 50, y + 30, 'OK', {
+        makeButton(this, x + colW - 56, y + 36, 'OK', {
           tone: 'blue',
-          fontSize: '12px',
-          padX: 10,
-          padY: 5,
+          fontSize: '13px',
+          padX: 12,
+          padY: 6,
           onClick: () => {
             const next = buyItem(loadSave(), item.id, item.price)
             if (!next) return

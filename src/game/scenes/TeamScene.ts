@@ -13,10 +13,10 @@ export class TeamScene extends Phaser.Scene {
   }
 
   async create() {
-    fadeIn(this, 0x0b0d12)
+    fadeIn(this, 0x07090e)
     await paintScene(this, BG.team, { dim: 0.48 })
-    const zone = drawShell(this, { title: 'Équipe & PC', back: true })
-    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12 })
+    const zone = drawShell(this, { title: 'Équipe & PC', back: true, accent: Theme.blue })
+    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12, accent: Theme.blue })
 
     const save = loadSave()
     const ids = [...new Set([...save.team, ...save.box].map((t) => t.id))]
@@ -36,20 +36,20 @@ export class TeamScene extends Phaser.Scene {
 
     save.team.forEach((slot, i) => {
       const mon = byId.get(slot.id)
-      const x = zone.x + 70 + i * 140
-      const y = zone.y + 110
-      this.add.rectangle(x, y, 120, 120, 0x000000, 0.4).setDepth(14)
-      this.add.rectangle(x, y, 120, 120).setStrokeStyle(2, mon?.color ?? Theme.blue).setDepth(14)
+      const x = zone.x + 90 + i * 180
+      const y = zone.y + 130
+      this.add.rectangle(x, y, 150, 150, 0x000000, 0.4).setDepth(14)
+      this.add.rectangle(x, y, 150, 150).setStrokeStyle(2, mon?.color ?? Theme.blue).setDepth(14)
       if (mon && this.textures.exists(mon.homeKey)) {
-        this.add.image(x, y - 14, mon.homeKey).setScale(0.18).setDepth(15)
+        this.add.image(x, y - 18, mon.homeKey).setScale(0.24).setDepth(15)
       }
-      bodyText(this, x, y + 40, `${mon?.nameFr ?? slot.id}\nN.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
-        size: '11px',
+      bodyText(this, x, y + 52, `${mon?.nameFr ?? slot.id}\nN.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
+        size: '13px',
         color: '#ffffff',
         align: 'center',
       }).setDepth(15)
       this.add
-        .zone(x, y, 120, 120)
+        .zone(x, y, 150, 150)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
           if (save.team.length <= 1) return
@@ -61,34 +61,34 @@ export class TeamScene extends Phaser.Scene {
         })
     })
 
-    sectionTitle(this, zone.x + 16, zone.y + 200, 'Boîte PC')
-    bodyText(this, zone.x + 120, zone.y + 202, 'Clic = ajouter', {
-      size: '11px',
+    sectionTitle(this, zone.x + 16, zone.y + 240, 'Boîte PC')
+    bodyText(this, zone.x + 130, zone.y + 242, 'Clic = ajouter', {
+      size: '12px',
       color: 'rgba(255,255,255,0.5)',
       origin: 0,
     }).setDepth(20)
 
     save.box.slice(0, 12).forEach((slot, i) => {
       const mon = byId.get(slot.id)
-      const x = zone.x + 70 + (i % 6) * 140
-      const y = zone.y + 270 + Math.floor(i / 6) * 80
-      this.add.rectangle(x, y, 120, 70, 0x000000, 0.4).setDepth(14)
-      this.add.rectangle(x, y, 120, 70).setStrokeStyle(1, mon?.color ?? Theme.muted).setDepth(14)
+      const x = zone.x + 90 + (i % 6) * 180
+      const y = zone.y + 330 + Math.floor(i / 6) * 100
+      this.add.rectangle(x, y, 150, 86, 0x000000, 0.4).setDepth(14)
+      this.add.rectangle(x, y, 150, 86).setStrokeStyle(1, mon?.color ?? Theme.muted).setDepth(14)
       if (mon && this.textures.exists(mon.homeKey)) {
-        this.add.image(x - 30, y, mon.homeKey).setScale(0.11).setDepth(15)
+        this.add.image(x - 40, y, mon.homeKey).setScale(0.14).setDepth(15)
       }
-      bodyText(this, x + 16, y - 8, mon?.nameFr ?? `#${slot.id}`, {
-        size: '11px',
+      bodyText(this, x + 22, y - 10, mon?.nameFr ?? `#${slot.id}`, {
+        size: '12px',
         color: '#ffffff',
         origin: 0.5,
       }).setDepth(15)
-      bodyText(this, x + 16, y + 12, `N.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
-        size: '10px',
+      bodyText(this, x + 22, y + 14, `N.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
+        size: '11px',
         color: 'rgba(255,255,255,0.65)',
         origin: 0.5,
       }).setDepth(15)
       this.add
-        .zone(x, y, 120, 70)
+        .zone(x, y, 150, 86)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
           const s = loadSave()

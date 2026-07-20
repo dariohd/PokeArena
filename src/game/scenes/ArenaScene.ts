@@ -136,56 +136,58 @@ export class ArenaScene extends Phaser.Scene {
 
   buildHud() {
     const hudBg = this.add.graphics().setDepth(1999).setScrollFactor(0)
-    hudBg.fillStyle(0x000000, 0.72)
-    hudBg.fillRoundedRect(12, 10, 220, 64, 10)
-    hudBg.lineStyle(1, 0xffffff, 0.15)
-    hudBg.strokeRoundedRect(12, 10, 220, 64, 10)
-    hudBg.fillStyle(0x000000, 0.72)
-    hudBg.fillRoundedRect(GAME_W - 200, 10, 188, 48, 10)
-    hudBg.strokeRoundedRect(GAME_W - 200, 10, 188, 48, 10)
-    hudBg.fillStyle(0x000000, 0.72)
-    hudBg.fillRoundedRect(12, GAME_H - 86, 340, 72, 10)
-    hudBg.strokeRoundedRect(12, GAME_H - 86, 340, 72, 10)
+    hudBg.fillStyle(0x05070c, 0.82)
+    hudBg.fillRoundedRect(16, 14, 260, 72, 12)
+    hudBg.lineStyle(1, 0xffffff, 0.14)
+    hudBg.strokeRoundedRect(16, 14, 260, 72, 12)
+    hudBg.fillStyle(0xe3350d, 1)
+    hudBg.fillRect(16, 14, 4, 72)
+    hudBg.fillStyle(0x05070c, 0.82)
+    hudBg.fillRoundedRect(GAME_W - 240, 14, 224, 56, 12)
+    hudBg.strokeRoundedRect(GAME_W - 240, 14, 224, 56, 12)
+    hudBg.fillStyle(0x05070c, 0.86)
+    hudBg.fillRoundedRect(16, GAME_H - 108, 400, 88, 12)
+    hudBg.strokeRoundedRect(16, GAME_H - 108, 400, 88, 12)
 
     this.hudWave = this.add
-      .text(26, 16, '', { fontFamily: 'Fredoka, Nunito, sans-serif', fontSize: '18px', color: '#ffd070' })
+      .text(34, 22, '', { fontFamily: 'Fredoka, Nunito, sans-serif', fontSize: '22px', color: '#ffd070' })
       .setDepth(2000)
       .setScrollFactor(0)
     this.hudCoins = this.add
-      .text(26, 42, '', { fontFamily: 'Nunito, sans-serif', fontSize: '13px', color: 'rgba(255,255,255,0.9)' })
+      .text(34, 52, '', { fontFamily: 'Nunito, sans-serif', fontSize: '14px', color: 'rgba(255,255,255,0.9)' })
       .setDepth(2000)
       .setScrollFactor(0)
 
     this.hudCombo = this.add
-      .text(GAME_W - 24, 14, '', { fontFamily: 'Fredoka, Nunito, sans-serif', fontSize: '18px', color: '#e3350d' })
+      .text(GAME_W - 28, 20, '', { fontFamily: 'Fredoka, Nunito, sans-serif', fontSize: '20px', color: '#e3350d' })
       .setOrigin(1, 0)
       .setDepth(2000)
       .setScrollFactor(0)
-    this.add.rectangle(GAME_W - 188, 44, 160, 6, 0x333340, 1).setOrigin(0, 0.5).setDepth(2000).setScrollFactor(0)
+    this.add.rectangle(GAME_W - 220, 52, 180, 8, 0x333340, 1).setOrigin(0, 0.5).setDepth(2000).setScrollFactor(0)
     this.comboBarFg = this.add
-      .rectangle(GAME_W - 188, 44, 0, 6, 0xe3350d)
+      .rectangle(GAME_W - 220, 52, 0, 8, 0xe3350d)
       .setOrigin(0, 0.5)
       .setDepth(2001)
       .setScrollFactor(0)
 
     this.playerNameText = this.add
-      .text(26, GAME_H - 80, '', { fontFamily: 'Nunito, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.9)' })
+      .text(32, GAME_H - 98, '', { fontFamily: 'Nunito, sans-serif', fontSize: '14px', color: 'rgba(255,255,255,0.9)' })
       .setDepth(2000)
       .setScrollFactor(0)
     this.add
-      .rectangle(26, GAME_H - 58, 216, 14, 0x1e2438, 0.95)
+      .rectangle(32, GAME_H - 70, 280, 16, 0x1e2438, 0.95)
       .setOrigin(0, 0.5)
       .setDepth(2000)
       .setScrollFactor(0)
     this.playerBarFg = this.add
-      .rectangle(28, GAME_H - 58, 212, 10, 0x4caf70)
+      .rectangle(34, GAME_H - 70, 276, 12, 0x4caf70)
       .setOrigin(0, 0.5)
       .setDepth(2001)
       .setScrollFactor(0)
     this.playerBarText = this.add
-      .text(134, GAME_H - 58, '', {
+      .text(170, GAME_H - 70, '', {
         fontFamily: 'Nunito, sans-serif',
-        fontSize: '11px',
+        fontSize: '12px',
         color: '#ffffff',
       })
       .setOrigin(0.5)
@@ -193,30 +195,30 @@ export class ArenaScene extends Phaser.Scene {
       .setScrollFactor(0)
 
     this.hudMoves = this.add
-      .text(26, GAME_H - 38, '', {
+      .text(32, GAME_H - 44, '', {
         fontFamily: 'Nunito, sans-serif',
-        fontSize: '11px',
+        fontSize: '12px',
         color: 'rgba(255,255,255,0.75)',
       })
       .setDepth(2000)
       .setScrollFactor(0)
 
     this.banner = this.add
-      .text(GAME_W / 2, 100, '', {
+      .text(GAME_W / 2, 120, '', {
         fontFamily: 'Fredoka, Nunito, sans-serif',
-        fontSize: '28px',
+        fontSize: '36px',
         color: '#ffffff',
         stroke: '#e3350d',
-        strokeThickness: 8,
+        strokeThickness: 10,
       })
       .setOrigin(0.5)
       .setDepth(2010)
       .setAlpha(0)
 
     this.add
-      .text(GAME_W / 2, GAME_H - 12, 'ZQSD · 1-4 · H soin · T auto', {
+      .text(GAME_W / 2, GAME_H - 14, 'ZQSD · 1-4 · H soin · T auto', {
         fontFamily: 'Nunito, sans-serif',
-        fontSize: '11px',
+        fontSize: '12px',
         color: 'rgba(255,255,255,0.55)',
       })
       .setOrigin(0.5)
@@ -252,14 +254,14 @@ export class ArenaScene extends Phaser.Scene {
   buildMoveButtons() {
     const moves = this.player.mon.moves
     moves.forEach((m, i) => {
-      const x = 380 + i * 140
+      const x = 460 + i * 160
       const btn = this.add
-        .text(x, GAME_H - 48, `${i + 1}. ${m.nameFr}`, {
+        .text(x, GAME_H - 56, `${i + 1}. ${m.nameFr}`, {
           fontFamily: 'Nunito, sans-serif',
-          fontSize: '11px',
+          fontSize: '12px',
           color: '#1e2438',
           backgroundColor: i === 0 ? '#f7d02c' : '#fffbf5',
-          padding: { x: 8, y: 6 },
+          padding: { x: 10, y: 8 },
         })
         .setOrigin(0.5)
         .setDepth(2100)
@@ -292,20 +294,20 @@ export class ArenaScene extends Phaser.Scene {
 
   setupMobileControls() {
     const zone = this.add
-      .circle(90, GAME_H - 140, 52, 0x3b7dd8, 0.18)
+      .circle(110, GAME_H - 170, 58, 0x3b7dd8, 0.18)
       .setStrokeStyle(2, 0x3b7dd8, 0.5)
       .setScrollFactor(0)
       .setDepth(2100)
       .setInteractive()
-    const knob = this.add.circle(90, GAME_H - 140, 22, 0x3b7dd8, 0.55).setScrollFactor(0).setDepth(2101)
+    const knob = this.add.circle(110, GAME_H - 170, 24, 0x3b7dd8, 0.55).setScrollFactor(0).setDepth(2101)
 
     const healBtn = this.add
-      .text(GAME_W - 70, GAME_H - 130, 'SOIN', {
+      .text(GAME_W - 80, GAME_H - 160, 'SOIN', {
         fontFamily: 'Fredoka, Nunito, sans-serif',
-        fontSize: '14px',
+        fontSize: '16px',
         color: '#ffffff',
         backgroundColor: '#4caf70',
-        padding: { x: 12, y: 10 },
+        padding: { x: 14, y: 12 },
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -364,7 +366,7 @@ export class ArenaScene extends Phaser.Scene {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR)
     }
     // Voile bas pour HUD
-    this.add.rectangle(GAME_W / 2, GAME_H - 48, GAME_W, 96, 0x000000, 0.35).setDepth(5)
+    this.add.rectangle(GAME_W / 2, GAME_H - 56, GAME_W, 112, 0x000000, 0.38).setDepth(5)
   }
 
   async ensureMon(id: number, levelHint = 40, full = false): Promise<MonSummary> {
@@ -504,7 +506,7 @@ export class ArenaScene extends Phaser.Scene {
 
     if (this.comboTimer > 0) {
       this.comboTimer -= dt
-      this.comboBarFg.width = 168 * Phaser.Math.Clamp(this.comboTimer / 2400, 0, 1)
+      this.comboBarFg.width = 180 * Phaser.Math.Clamp(this.comboTimer / 2400, 0, 1)
       if (this.comboTimer <= 0) {
         this.combo = 0
         this.refreshHud()

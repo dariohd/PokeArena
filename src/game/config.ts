@@ -11,8 +11,9 @@ import { TrainScene } from './scenes/TrainScene'
 import { TeamScene } from './scenes/TeamScene'
 import { ShopScene } from './scenes/ShopScene'
 
-export const GAME_W = 960
-export const GAME_H = 540
+/** HD 16:9 — présence type client gacha */
+export const GAME_W = 1280
+export const GAME_H = 720
 
 export function createGame(parent: string) {
   return new Phaser.Game({
@@ -20,7 +21,7 @@ export function createGame(parent: string) {
     parent,
     width: GAME_W,
     height: GAME_H,
-    backgroundColor: '#0b1220',
+    backgroundColor: '#07090e',
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

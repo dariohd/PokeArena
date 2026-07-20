@@ -82,8 +82,8 @@ export function drawPerspectiveArena(scene: Phaser.Scene) {
   return g
 }
 
-export const ARENA_FAR_Y = 250
-export const ARENA_NEAR_Y = 470
+export const ARENA_FAR_Y = 330
+export const ARENA_NEAR_Y = 620
 
 /** Échelle 2.5D selon la profondeur (Y) */
 export function depthScale(y: number, base = 1): number {
@@ -103,4 +103,41 @@ export function flashWhite(scene: Phaser.Scene, duration = 120) {
     duration,
     onComplete: () => fx.destroy(),
   })
+}
+
+/** Anneau lumineux sous un héros (HOME art) */
+export function heroGlowRing(scene: Phaser.Scene, x: number, y: number, color = 0xffffff) {
+  const ring = scene.add
+    .ellipse(x, y + 18, 160, 36, color, 0.22)
+    .setDepth(9)
+  scene.tweens.add({
+    targets: ring,
+    scaleX: 1.12,
+    scaleY: 1.08,
+    alpha: 0.1,
+    duration: 1600,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  })
+  return ring
+}
+
+/** Burst de particules pour invoc haute rareté */
+export function summonBurst(scene: Phaser.Scene, x: number, y: number, color: number, count = 24) {
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 * i) / count
+    const dist = 40 + Math.random() * 90
+    const p = scene.add.circle(x, y, 2 + Math.random() * 3, color, 0.95).setDepth(50)
+    scene.tweens.add({
+      targets: p,
+      x: x + Math.cos(a) * dist,
+      y: y + Math.sin(a) * dist,
+      alpha: 0,
+      scale: 0.2,
+      duration: 420 + Math.random() * 280,
+      ease: 'Cubic.easeOut',
+      onComplete: () => p.destroy(),
+    })
+  }
 }
