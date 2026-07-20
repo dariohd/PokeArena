@@ -19,9 +19,18 @@ export class ArenaScene extends Phaser.Scene {
   private hudWave!: Phaser.GameObjects.Text
   private hudCoins!: Phaser.GameObjects.Text
   private hudCombo!: Phaser.GameObjects.Text
+  private comboBarBg!: Phaser.GameObjects.Rectangle
+  private comboBarFg!: Phaser.GameObjects.Rectangle
+  private playerBarBg!: Phaser.GameObjects.Rectangle
+  private playerBarFg!: Phaser.GameObjects.Rectangle
+  private playerBarText!: Phaser.GameObjects.Text
+  private playerNameText!: Phaser.GameObjects.Text
+  private flashFx!: Phaser.GameObjects.Rectangle
+  private vignette!: Phaser.GameObjects.Rectangle
   private banner!: Phaser.GameObjects.Text
   private spawning = false
   private ended = false
+  private lastCombo = 0
 
   constructor() {
     super('arena')
@@ -50,8 +59,15 @@ export class ArenaScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as typeof this.wasd
 
+    // Readability panels behind the HUD text so it stays legible over a busy arena.
+    const hudBg = this.add.graphics().setDepth(1999).setScrollFactor(0)
+    hudBg.fillStyle(0x070b12, 0.55)
+    hudBg.fillRoundedRect(14, 10, 190, 62, 8)
+    hudBg.fillRoundedRect(GAME_W - 190, 10, 176, 40, 8)
+    hudBg.fillRoundedRect(14, GAME_H - 54, 240, 40, 8)
+
     this.hudWave = this.add
-      .text(24, 18, '', {
+      .text(26, 16, '', {
         fontFamily: 'Bungee, cursive',
         fontSize: '20px',
         color: '#3cf0ff',
@@ -59,7 +75,7 @@ export class ArenaScene extends Phaser.Scene {
       .setDepth(2000)
       .setScrollFactor(0)
     this.hudCoins = this.add
-      .text(24, 46, '', {
+      .text(26, 44, '', {
         fontFamily: 'Space Grotesk, sans-serif',
         fontSize: '14px',
         color: '#ffc14a',
@@ -67,7 +83,7 @@ export class ArenaScene extends Phaser.Scene {
       .setDepth(2000)
       .setScrollFactor(0)
     this.hudCombo = this.add
-      .text(GAME_W - 24, 18, '', {
+      .text(GAME_W - 24, 14, '', {
         fontFamily: 'Bungee, cursive',
         fontSize: '22px',
         color: '#ff4d7a',
@@ -75,6 +91,49 @@ export class ArenaScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setDepth(2000)
       .setScrollFactor(0)
+    this.comboBarBg = this.add
+      .rectangle(GAME_W - 176, 40, 152, 6, 0x0a1018, 0.8)
+      .setOrigin(0, 0.5)
+      .setDepth(2000)
+      .setScrollFactor(0)
+    this.comboBarFg = this.add
+      .rectangle(GAME_W - 176, 40, 0, 6, 0xff4d7a)
+      .setOrigin(0, 0.5)
+      .setDepth(2001)
+      .setScrollFactor(0)
+
+    // Dedicated, always-on-screen HP readout for the player so it never gets lost in the chaos.
+    this.playerNameText = this.add
+      .text(26, GAME_H - 50, '', {
+        fontFamily: 'Space Grotesk, sans-serif',
+        fontSize: '12px',
+        color: '#8aa0b8',
+      })
+      .setDepth(2000)
+      .setScrollFactor(0)
+    this.playerBarBg = this.add
+      .rectangle(26, GAME_H - 30, 216, 14, 0x0a1018, 0.9)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(1, 0x3cf0ff, 0.6)
+      .setDepth(2000)
+      .setScrollFactor(0)
+    this.playerBarFg = this.add
+      .rectangle(28, GAME_H - 30, 212, 10, 0x56f0b0)
+      .setOrigin(0, 0.5)
+      .setDepth(2001)
+      .setScrollFactor(0)
+    this.playerBarText = this.add
+      .text(26 + 108, GAME_H - 30, '', {
+        fontFamily: 'Space Grotesk, sans-serif',
+        fontSize: '11px',
+        color: '#ffffff',
+        stroke: '#070b12',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(2002)
+      .setScrollFactor(0)
+
     this.banner = this.add
       .text(GAME_W / 2, 90, '', {
         fontFamily: 'Bungee, cursive',
@@ -84,7 +143,7 @@ export class ArenaScene extends Phaser.Scene {
         strokeThickness: 6,
       })
       .setOrigin(0.5)
-      .setDepth(2001)
+      .setDepth(2010)
       .setAlpha(0)
 
     this.add
@@ -95,6 +154,20 @@ export class ArenaScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(2000)
+      .setScrollFactor(0)
+
+    // Full-screen overlays for damage flash + low-HP vignette; both stay invisible until needed.
+    this.flashFx = this.add
+      .rectangle(0, 0, GAME_W, GAME_H, 0xff4d7a, 0)
+      .setOrigin(0)
+      .setDepth(2500)
+      .setScrollFactor(0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+    this.vignette = this.add
+      .rectangle(0, 0, GAME_W, GAME_H, 0xff0033, 0)
+      .setOrigin(0)
+      .setDepth(2490)
+      .setScrollFactor(0)
 
     await this.startWave()
   }
@@ -185,6 +258,29 @@ export class ArenaScene extends Phaser.Scene {
     this.hudWave.setText(`Vague ${this.wave}`)
     this.hudCoins.setText(`Pièces ${this.coins}`)
     this.hudCombo.setText(this.combo > 1 ? `COMBO x${this.combo}` : '')
+    this.hudCombo.setColor(this.combo >= 10 ? '#ffc14a' : this.combo >= 5 ? '#ff9d4d' : '#ff4d7a')
+
+    if (this.combo > this.lastCombo && this.combo > 1) {
+      this.tweens.add({
+        targets: this.hudCombo,
+        scale: 1.35,
+        duration: 90,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      })
+    }
+    this.lastCombo = this.combo
+  }
+
+  updatePlayerBar() {
+    const ratio = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1)
+    this.playerBarFg.width = 212 * ratio
+    this.playerBarFg.fillColor = ratio < 0.25 ? 0xff4d7a : ratio < 0.5 ? 0xffc14a : 0x56f0b0
+    this.playerNameText.setText(this.player.mon.name.toUpperCase())
+    this.playerBarText.setText(`${Math.ceil(this.player.hp)} / ${this.player.maxHp}`)
+
+    const dangerAlpha = ratio < 0.25 ? 0.08 + Math.abs(Math.sin(this.time.now / 160)) * 0.1 : 0
+    this.vignette.setAlpha(dangerAlpha)
   }
 
   update(_t: number, dt: number) {
@@ -193,6 +289,7 @@ export class ArenaScene extends Phaser.Scene {
 
     if (this.comboTimer > 0) {
       this.comboTimer -= dt
+      this.comboBarFg.width = 152 * Phaser.Math.Clamp(this.comboTimer / 1600, 0, 1)
       if (this.comboTimer <= 0) {
         this.combo = 0
         this.refreshHud()
@@ -203,6 +300,7 @@ export class ArenaScene extends Phaser.Scene {
     this.aiEnemies(now)
     this.resolveCombat(now)
     ;[...this.allies, ...this.enemies].forEach((f) => f.alive && f.updateFx())
+    this.updatePlayerBar()
 
     if (!this.player.alive) {
       this.finish(false)
@@ -250,8 +348,18 @@ export class ArenaScene extends Phaser.Scene {
       body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed)
       e.setFlipX(target.x < e.x)
       const dmg = e.tryAttack(target, now)
-      if (dmg > 0) this.cameras.main.shake(40, 0.004)
+      if (dmg > 0) {
+        const isPlayer = target === this.player
+        const intensity = Phaser.Math.Clamp(dmg / target.maxHp, 0.02, 0.14)
+        this.cameras.main.shake(isPlayer ? 130 : 40, isPlayer ? 0.006 + intensity : 0.004)
+        if (isPlayer) this.flashDamage()
+      }
     }
+  }
+
+  flashDamage() {
+    this.flashFx.setAlpha(0.22)
+    this.tweens.add({ targets: this.flashFx, alpha: 0, duration: 220, ease: 'Quad.easeOut' })
   }
 
   nearestAlly(from: Fighter) {
@@ -285,38 +393,45 @@ export class ArenaScene extends Phaser.Scene {
       const dmg = a.tryAttack(nearest, now)
       if (dmg > 0) {
         this.damageDealt += dmg
-        this.spawnHitFx(nearest.x, nearest.y - 20, dmg)
+        const crit = dmg > a.atk * 1.05
+        this.spawnHitFx(nearest.x, nearest.y - 20, dmg, crit)
         this.combo += 1
         this.comboTimer = 1600
         this.refreshHud()
-        if (a === this.player) this.cameras.main.shake(50, 0.005)
+        if (a === this.player) {
+          const intensity = Phaser.Math.Clamp(dmg / nearest.maxHp, 0.03, 0.16)
+          this.cameras.main.shake(60 + (crit ? 60 : 0), 0.005 + intensity)
+        }
       }
     }
   }
 
-  spawnHitFx(x: number, y: number, dmg: number) {
+  spawnHitFx(x: number, y: number, dmg: number, crit = false) {
     const t = this.add
-      .text(x, y, `-${Math.round(dmg)}`, {
+      .text(x, y, `-${Math.round(dmg)}${crit ? '!' : ''}`, {
         fontFamily: 'Bungee, cursive',
-        fontSize: '16px',
-        color: '#ffc14a',
+        fontSize: crit ? '22px' : '16px',
+        color: crit ? '#ffc14a' : '#e8f2ff',
         stroke: '#070b12',
         strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setDepth(3000)
+      .setScale(0.5)
     this.tweens.add({
       targets: t,
+      scale: crit ? 1.15 : 1,
       y: y - 36,
       alpha: 0,
-      duration: 450,
+      duration: crit ? 550 : 450,
+      ease: 'Back.easeOut',
       onComplete: () => t.destroy(),
     })
 
-    const ring = this.add.circle(x, y + 10, 8, 0x3cf0ff, 0.5).setDepth(2999)
+    const ring = this.add.circle(x, y + 10, crit ? 12 : 8, crit ? 0xffc14a : 0x3cf0ff, 0.5).setDepth(2999)
     this.tweens.add({
       targets: ring,
-      scale: 3,
+      scale: crit ? 4 : 3,
       alpha: 0,
       duration: 280,
       onComplete: () => ring.destroy(),
@@ -341,7 +456,7 @@ export class ArenaScene extends Phaser.Scene {
       writeSave(save)
     }
 
-    e.destroyAll()
+    e.playDeathFx(() => e.destroyAll())
   }
 
   finish(won: boolean) {
