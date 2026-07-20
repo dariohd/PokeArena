@@ -8,20 +8,21 @@ import { GACHA_PITY, MISSION_DEFS, unlockedBanners } from '../data/types'
 import { heroGlowRing } from '../fx'
 import { L, drawShell } from '../layout'
 import { Theme } from '../theme'
-import { bodyText, ensureTextures, fadeIn, goScene, makeButton, starsLabel } from '../ui'
-
-const DOCK_NAV = [
-  { label: 'Arène', scene: 'arena', tone: 'red' as const },
-  { label: 'Bannières', scene: 'gacha', tone: 'gold' as const },
-  { label: 'Dojo', scene: 'train', tone: 'green' as const },
-  { label: 'Équipe', scene: 'team', tone: 'blue' as const },
-  { label: 'Mart', scene: 'shop', tone: 'dark' as const },
-  { label: 'Dex', scene: 'pokedex', tone: 'dark' as const },
-]
+import {
+  bodyText,
+  ensureItemIcons,
+  ensureTextures,
+  fadeIn,
+  goScene,
+  itemTextureKey,
+  makeButton,
+  makeDockIcon,
+  starsLabel,
+} from '../ui'
 
 /**
  * Home : une composition.
- * Héros + bannière (pity + CTA) · nav secondaire au dock.
+ * Héros + bannière · dock icônes.
  */
 export class HubScene extends Phaser.Scene {
   constructor() {
@@ -44,6 +45,7 @@ export class HubScene extends Phaser.Scene {
       heroScale: 0.5,
     })
     heroGlowRing(this, hx, hy + 110, Theme.gold)
+    await ensureItemIcons(this, ['pokeball', 'rareCandy', 'potion'])
 
     drawShell(this, { title: 'Centre', back: false, showWallet: true, accent: Theme.red })
 
@@ -51,7 +53,6 @@ export class HubScene extends Phaser.Scene {
     const featured = banners[banners.length - 1]
     const pity = featured ? (save.gachaPityByBanner[featured.id] ?? 0) : 0
 
-    // Colonne gauche : info bannière (pas de grosse carte)
     const lx = L.pad + 8
     const ly = L.contentY + 36
 
@@ -62,36 +63,34 @@ export class HubScene extends Phaser.Scene {
     }).setDepth(20)
 
     bodyText(this, lx, ly + 28, featured?.nameFr ?? 'Kanto', {
-      size: '28px',
+      size: '26px',
       color: '#ffffff',
       origin: 0,
     }).setDepth(20)
 
-    bodyText(this, lx, ly + 68, featured?.gamesFr ?? '', {
+    bodyText(this, lx, ly + 64, featured?.gamesFr ?? '', {
       size: '13px',
       color: 'rgba(255,255,255,0.65)',
       origin: 0,
     }).setDepth(20)
 
-    bodyText(this, lx, ly + 100, `Pity 4★  ${pity} / ${GACHA_PITY}`, {
+    bodyText(this, lx, ly + 96, `Pity 4★  ${pity} / ${GACHA_PITY}`, {
       size: '14px',
       color: 'rgba(255,255,255,0.88)',
       origin: 0,
     }).setDepth(20)
 
-    // Barre pity
     const barW = 220
-    const barBg = this.add.rectangle(lx + barW / 2, ly + 128, barW, 6, 0x000000, 0.45).setDepth(19)
+    this.add.rectangle(lx + barW / 2, ly + 124, barW, 5, 0x000000, 0.45).setDepth(19)
     this.add
-      .rectangle(lx, ly + 128, Math.max(4, (barW * pity) / GACHA_PITY), 6, Theme.gold, 1)
+      .rectangle(lx, ly + 124, Math.max(4, (barW * pity) / GACHA_PITY), 5, Theme.gold, 1)
       .setOrigin(0, 0.5)
       .setDepth(20)
-    void barBg
 
-    makeButton(this, lx + 90, ly + 180, 'Invoquer', {
+    makeButton(this, lx + 90, ly + 172, 'Invoquer', {
       tone: 'gold',
-      fontSize: '16px',
-      padX: 28,
+      fontSize: '15px',
+      padX: 26,
       padY: 10,
       onClick: () => {
         if (featured) this.scene.start('gacha', { bannerId: featured.id })
@@ -99,18 +98,16 @@ export class HubScene extends Phaser.Scene {
       },
     }).setDepth(22)
 
-    makeButton(this, lx + 90, ly + 230, 'Combattre', {
+    makeButton(this, lx + 90, ly + 222, 'Combattre', {
       tone: 'red',
-      fontSize: '14px',
-      padX: 22,
+      fontSize: '13px',
+      padX: 20,
       padY: 8,
       onClick: () => goScene(this, 'arena', Theme.red),
     }).setDepth(22)
 
-    // Équipe : miniatures discrètes
-    await this.drawTeamQuiet(save.team.slice(0, 5), lx, ly + 290)
+    await this.drawTeamQuiet(save.team.slice(0, 5), lx, ly + 280)
 
-    // Quête : une ligne, pas une carte
     const m =
       save.missions.find((x) => {
         const d = MISSION_DEFS.find((dd) => dd.id === x.id)
@@ -141,23 +138,95 @@ export class HubScene extends Phaser.Scene {
       }
     }
 
-    // Dock : nav secondaire compacte + options
-    const navX = [64, 148, 240, 330, 412, 488]
-    DOCK_NAV.forEach((n, i) => {
-      makeButton(this, navX[i], L.dockY, n.label, {
-        tone: n.tone,
-        fontSize: '12px',
-        padX: 10,
-        padY: 7,
-        onClick: () => goScene(this, n.scene),
+    this.buildIconDock(save)
+  }
+
+  buildIconDock(save: ReturnType<typeof loadSave>) {
+    const y = L.dockY
+    const startX = 56
+    const gap = 56
+
+    const items: {
+      label: string
+      accent: number
+      scene?: string
+      iconKey?: string
+      drawIcon?: (g: Phaser.GameObjects.Graphics) => void
+      onClick?: () => void
+    }[] = [
+      {
+        label: 'Arène',
+        accent: Theme.red,
+        scene: 'arena',
+        drawIcon: (g) => {
+          g.lineStyle(2.5, 0xffffff, 0.95)
+          g.strokeTriangle(0, -14, -8, 0, 8, 0)
+          g.fillStyle(0xffffff, 0.9)
+          g.fillTriangle(0, -12, -6, -1, 6, -1)
+        },
+      },
+      {
+        label: 'Invoc',
+        accent: Theme.gold,
+        scene: 'gacha',
+        iconKey: itemTextureKey('pokeball'),
+      },
+      {
+        label: 'Dojo',
+        accent: Theme.grassDark,
+        scene: 'train',
+        iconKey: itemTextureKey('rareCandy'),
+      },
+      {
+        label: 'Équipe',
+        accent: Theme.blue,
+        scene: 'team',
+        drawIcon: (g) => {
+          g.fillStyle(0xffffff, 0.95)
+          g.fillCircle(-7, -8, 4)
+          g.fillCircle(7, -8, 4)
+          g.fillCircle(0, -2, 4)
+        },
+      },
+      {
+        label: 'Mart',
+        accent: 0xe09030,
+        scene: 'shop',
+        iconKey: itemTextureKey('potion'),
+      },
+      {
+        label: 'Dex',
+        accent: 0x48c8e0,
+        scene: 'pokedex',
+        drawIcon: (g) => {
+          g.fillStyle(0xffffff, 0.95)
+          g.fillRoundedRect(-7, -14, 14, 16, 2)
+          g.fillStyle(Theme.red, 1)
+          g.fillRect(-7, -14, 14, 7)
+        },
+      },
+    ]
+
+    items.forEach((it, i) => {
+      makeDockIcon(this, startX + i * gap, y, {
+        label: it.label,
+        accent: it.accent,
+        iconKey: it.iconKey,
+        drawIcon: it.drawIcon,
+        onClick: () => goScene(this, it.scene!),
       }).setDepth(102)
     })
 
-    makeButton(this, GAME_W - 210, L.dockY, save.autoMode ? 'Auto' : 'Manu', {
-      tone: save.autoMode ? 'green' : 'dark',
-      fontSize: '12px',
-      padX: 10,
-      padY: 7,
+    // Options à droite (toujours compact)
+    makeDockIcon(this, GAME_W - 148, y, {
+      label: save.autoMode ? 'Auto' : 'Manu',
+      accent: save.autoMode ? Theme.grassDark : Theme.machine,
+      drawIcon: (g) => {
+        g.fillStyle(0xffffff, 0.9)
+        g.fillCircle(0, -6, 3)
+        g.lineStyle(2, 0xffffff, 0.9)
+        g.strokeCircle(0, -6, 8)
+      },
       onClick: () => {
         const s = loadSave()
         s.autoMode = !s.autoMode
@@ -166,22 +235,33 @@ export class HubScene extends Phaser.Scene {
       },
     }).setDepth(102)
 
-    makeButton(this, GAME_W - 130, L.dockY, 'Son', {
-      tone: 'dark',
-      fontSize: '12px',
-      padX: 10,
-      padY: 7,
+    makeDockIcon(this, GAME_W - 92, y, {
+      label: 'Son',
+      accent: Theme.machine,
+      drawIcon: (g) => {
+        g.fillStyle(0xffffff, 0.9)
+        g.fillTriangle(-6, -6, -6, -6, 2, -12)
+        g.fillRect(-8, -10, 4, 8)
+        g.lineStyle(1.5, 0xffffff, 0.8)
+        g.beginPath()
+        g.arc(2, -6, 6, -0.6, 0.6, false)
+        g.strokePath()
+      },
       onClick: () => {
         toggleMute()
         this.scene.restart()
       },
     }).setDepth(102)
 
-    makeButton(this, GAME_W - 52, L.dockY, 'Menu', {
-      tone: 'red',
-      fontSize: '12px',
-      padX: 10,
-      padY: 7,
+    makeDockIcon(this, GAME_W - 36, y, {
+      label: 'Menu',
+      accent: Theme.red,
+      drawIcon: (g) => {
+        g.lineStyle(2.5, 0xffffff, 0.95)
+        g.lineBetween(-7, -12, 7, -12)
+        g.lineBetween(-7, -6, 7, -6)
+        g.lineBetween(-7, 0, 7, 0)
+      },
       onClick: () => goScene(this, 'title'),
     }).setDepth(102)
   }

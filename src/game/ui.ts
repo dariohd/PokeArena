@@ -318,6 +318,63 @@ export async function ensureItemIcons(scene: Phaser.Scene, keys: InventoryKey[] 
   )
 }
 
+/** Icône dock compacte (cercle + label court) */
+export function makeDockIcon(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  opts: {
+    label: string
+    accent: number
+    onClick: () => void
+    /** texture item optionnelle */
+    iconKey?: string
+    /** dessin custom si pas d’iconKey */
+    drawIcon?: (g: Phaser.GameObjects.Graphics) => void
+  },
+) {
+  const g = scene.add.graphics()
+  g.fillStyle(0x000000, 0.55)
+  g.fillCircle(0, -6, 18)
+  g.lineStyle(2, opts.accent, 0.95)
+  g.strokeCircle(0, -6, 18)
+
+  const kids: Phaser.GameObjects.GameObject[] = [g]
+
+  if (opts.iconKey && scene.textures.exists(opts.iconKey)) {
+    const img = scene.add.image(0, -6, opts.iconKey).setScale(1.15)
+    kids.push(img)
+  } else if (opts.drawIcon) {
+    const ig = scene.add.graphics()
+    opts.drawIcon(ig)
+    kids.push(ig)
+  } else {
+    g.fillStyle(opts.accent, 1)
+    g.fillCircle(0, -6, 5)
+  }
+
+  const label = scene.add
+    .text(0, 18, opts.label, {
+      fontFamily: FONT_UI,
+      fontSize: '10px',
+      color: 'rgba(255,255,255,0.75)',
+    })
+    .setOrigin(0.5)
+  kids.push(label)
+
+  const c = scene.add.container(x, y, kids)
+  c.setSize(44, 48)
+  c.setInteractive({
+    hitArea: new Phaser.Geom.Rectangle(-22, -26, 44, 48),
+    hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+    useHandCursor: true,
+  })
+  c.on('pointerover', () => scene.tweens.add({ targets: c, scale: 1.08, duration: 70 }))
+  c.on('pointerout', () => scene.tweens.add({ targets: c, scale: 1, duration: 70 }))
+  c.on('pointerdown', opts.onClick)
+  return c
+}
+
 export function walletBar(
   scene: Phaser.Scene,
   y: number,
