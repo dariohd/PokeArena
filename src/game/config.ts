@@ -46,9 +46,9 @@ export function createGame(parent: string) {
       ResultScene,
     ],
     render: {
-      antialias: false,
-      roundPixels: true,
-      pixelArt: true,
+      antialias: true,
+      roundPixels: false,
+      pixelArt: false,
     },
   })
 }

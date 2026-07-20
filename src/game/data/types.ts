@@ -296,13 +296,33 @@ export const GACHA_MULTI_BALL_COST = 10
 export const GACHA_PITY = 50
 export const MAX_STARS = 4
 
-export const SHOP_CATALOG = [
-  { id: 'pokeball' as const, label: 'Poké Ball', price: 200, desc: 'Ticket de bannière (x1)' },
-  { id: 'potion' as const, label: 'Potion', price: 300, desc: '+40 PV en arène' },
-  { id: 'superpotion' as const, label: 'Super Potion', price: 700, desc: '+90 PV en arène' },
-  { id: 'hyperpotion' as const, label: 'Hyper Potion', price: 1200, desc: '+160 PV en arène' },
-  { id: 'revive' as const, label: 'Rappel', price: 1500, desc: 'Relance un allié K.O.' },
-  { id: 'rareCandy' as const, label: 'Super Bonbon', price: 1000, desc: '+1 niveau (évolution possible)' },
+/** Noms sprites PokéAPI `/sprites/items/{name}.png` */
+export const ITEM_SPRITE = {
+  pokeball: 'poke-ball',
+  greatball: 'great-ball',
+  ultraball: 'ultra-ball',
+  masterball: 'master-ball',
+  potion: 'potion',
+  superpotion: 'super-potion',
+  hyperpotion: 'hyper-potion',
+  revive: 'revive',
+  rareCandy: 'rare-candy',
+} as const
+
+export type InventoryKey = keyof typeof ITEM_SPRITE
+
+export const SHOP_CATALOG: {
+  id: InventoryKey
+  label: string
+  price: number
+  desc: string
+}[] = [
+  { id: 'pokeball', label: 'Poké Ball', price: 200, desc: 'Ticket de bannière (x1)' },
+  { id: 'potion', label: 'Potion', price: 300, desc: '+40 PV en arène' },
+  { id: 'superpotion', label: 'Super Potion', price: 700, desc: '+90 PV en arène' },
+  { id: 'hyperpotion', label: 'Hyper Potion', price: 1200, desc: '+160 PV en arène' },
+  { id: 'revive', label: 'Rappel', price: 1500, desc: 'Relance un allié K.O.' },
+  { id: 'rareCandy', label: 'Super Bonbon', price: 1000, desc: '+1 niveau (évolution possible)' },
 ]
 
 export const MISSION_DEFS: {

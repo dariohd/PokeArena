@@ -1,8 +1,23 @@
 import Phaser from 'phaser'
-import { GAME_H, GAME_W } from '../config'
+import { GAME_W } from '../config'
 import { applyTrain, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { effectiveLevel, type OwnedMon } from '../data/types'
-import { FONT_TITLE, FONT_UI, Theme } from '../theme'
+import { Theme } from '../theme'
+import {
+  bodyText,
+  drawPanel,
+  drawRoom,
+  ensureItemIcons,
+  ensureTextures,
+  fadeIn,
+  hexCss,
+  itemTextureKey,
+  makeBackButton,
+  makeButton,
+  starsLabel,
+  titleText,
+  walletBar,
+} from '../ui'
 
 export class TrainScene extends Phaser.Scene {
   constructor() {
@@ -10,27 +25,18 @@ export class TrainScene extends Phaser.Scene {
   }
 
   async create() {
-    this.cameras.main.fadeIn(160, 126, 200, 227)
-    const g = this.add.graphics()
-    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
+    fadeIn(this, Theme.dojoWood)
+    drawRoom(this, 'dojo')
+    await ensureItemIcons(this, ['rareCandy'])
 
     const save = loadSave()
-    this.add
-      .text(GAME_W / 2, 28, 'Dojo · Super Bonbons', {
-        fontFamily: FONT_TITLE,
-        fontSize: '26px',
-        color: '#2a2a3a',
-      })
-      .setOrigin(0.5)
-
-    this.add
-      .text(GAME_W / 2, 58, `${save.inventory.rareCandy} Super Bonbon · 1 bonbon = +1 niveau (évo. possible)`, {
-        fontFamily: FONT_UI,
-        fontSize: '13px',
-        color: '#6a6a7a',
-      })
-      .setOrigin(0.5)
+    titleText(this, GAME_W / 2, 28, 'Dojo · Super Bonbons', { size: '24px', color: '#ffffff' })
+    if (this.textures.exists(itemTextureKey('rareCandy'))) {
+      this.add.image(GAME_W / 2 - 160, 54, itemTextureKey('rareCandy')).setScale(1.8)
+    }
+    walletBar(this, 54, [`${save.inventory.rareCandy} Super Bonbon · 1 = +1 niveau`], {
+      color: '#5a3a20',
+    })
 
     const pool: { where: 'team' | 'box'; index: number; mon: OwnedMon }[] = [
       ...save.team.map((mon, index) => ({ where: 'team' as const, index, mon })),
@@ -39,62 +45,44 @@ export class TrainScene extends Phaser.Scene {
 
     const ids = [...new Set(pool.map((p) => p.mon.id))]
     const details = ids.length ? await fetchMany(ids, { full: true }) : []
-    for (const m of details) {
-      if (!this.textures.exists(m.battleKey)) this.load.image(m.battleKey, m.battleUrl)
-    }
-    if (this.load.list.size > 0) {
-      await new Promise<void>((resolve) => {
-        this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
-        this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
-        this.load.start()
-      })
-    }
+    await ensureTextures(
+      this,
+      details.map((m) => ({ key: m.battleKey, url: m.battleUrl })),
+    )
+    const byId = new Map(details.map((m) => [m.id, m]))
 
     pool.forEach((slot, i) => {
-      const mon = details.find((d) => d.id === slot.mon.id)
-      const x = 90 + (i % 6) * 140
-      const y = 140 + Math.floor(i / 6) * 150
-      this.add.rectangle(x, y, 120, 130, Theme.panel).setStrokeStyle(3, mon?.color ?? Theme.blue)
+      const mon = byId.get(slot.mon.id)
+      const x = 80 + (i % 6) * 145
+      const y = 150 + Math.floor(i / 6) * 155
+      drawPanel(this, x - 55, y - 55, 120, 140, {
+        stroke: mon?.color ?? Theme.dojoWood,
+        radius: 12,
+      })
       if (mon && this.textures.exists(mon.battleKey)) {
-        this.add.image(x, y - 20, mon.battleKey).setScale(1.5)
+        this.add.image(x, y - 18, mon.battleKey).setScale(1.55)
       }
-      this.add
-        .text(x, y + 28, `${mon?.nameFr ?? '#' + slot.mon.id}\nN.${effectiveLevel(slot.mon)}`, {
-          fontFamily: FONT_UI,
-          fontSize: '11px',
-          color: '#2a2a3a',
-          align: 'center',
-        })
-        .setOrigin(0.5)
-
-      const btn = this.add
-        .text(x, y + 52, '+1 niv.', {
-          fontFamily: FONT_TITLE,
-          fontSize: '12px',
-          color: '#ffffff',
-          backgroundColor: '#e09030',
-          padding: { x: 8, y: 4 },
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true })
-      btn.on('pointerdown', () => {
-        const next = applyTrain(loadSave(), slot.where, slot.index, mon)
-        if (!next) return
-        writeSave(next)
-        this.scene.restart()
+      bodyText(
+        this,
+        x,
+        y + 32,
+        `${mon?.nameFr ?? '#' + slot.mon.id}\nN.${effectiveLevel(slot.mon)} ${starsLabel(slot.mon.stars)}`,
+        { size: '11px', color: hexCss(Theme.ink), align: 'center' },
+      )
+      makeButton(this, x, y + 62, '+1 niv.', {
+        tone: 'gold',
+        fontSize: '12px',
+        padX: 10,
+        padY: 5,
+        onClick: () => {
+          const next = applyTrain(loadSave(), slot.where, slot.index, mon)
+          if (!next) return
+          writeSave(next)
+          this.scene.restart()
+        },
       })
     })
 
-    this.add
-      .text(80, 500, 'Retour', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: '#e03028',
-        padding: { x: 12, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.scene.start('hub'))
+    makeBackButton(this)
   }
 }

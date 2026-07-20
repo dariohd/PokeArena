@@ -1,9 +1,21 @@
 import Phaser from 'phaser'
 import { playCry } from '../audio'
-import { GAME_H, GAME_W } from '../config'
+import { GAME_W } from '../config'
 import { fetchMon, fetchMany, loadSave } from '../data/pokeapi'
-import { GEN_MAX_ID, TYPE_FR, type MonSummary } from '../data/types'
-import { FONT_TITLE, FONT_UI, Theme } from '../theme'
+import { GEN_MAX_ID, TYPE_COLORS, TYPE_FR, type MonSummary } from '../data/types'
+import { Theme } from '../theme'
+import {
+  bodyText,
+  drawPanel,
+  drawRoom,
+  ensureTextures,
+  fadeIn,
+  hexCss,
+  makeBackButton,
+  makeButton,
+  titleText,
+  typeBadge,
+} from '../ui'
 
 export class PokedexScene extends Phaser.Scene {
   private page = 0
@@ -11,93 +23,61 @@ export class PokedexScene extends Phaser.Scene {
   private list: MonSummary[] = []
   private detail!: Phaser.GameObjects.Text
   private sprite?: Phaser.GameObjects.Image
+  private badges: Phaser.GameObjects.Container[] = []
 
   constructor() {
     super('pokedex')
   }
 
   async create() {
-    this.cameras.main.fadeIn(250, 126, 200, 227)
-    const g = this.add.graphics()
-    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.panel, 1)
-    g.fillRoundedRect(40, 90, 520, 380, 12)
-    g.lineStyle(4, Theme.red, 1)
-    g.strokeRoundedRect(40, 90, 520, 380, 12)
-    g.fillStyle(Theme.panel, 1)
-    g.fillRoundedRect(580, 90, 340, 380, 12)
-    g.lineStyle(4, Theme.blue, 1)
-    g.strokeRoundedRect(580, 90, 340, 380, 12)
-
+    fadeIn(this, Theme.dexRed)
+    drawRoom(this, 'dex')
     const save = loadSave()
     const maxId = GEN_MAX_ID[save.unlockedGen] ?? 151
 
-    this.add
-      .text(GAME_W / 2, 28, 'Pokédex', {
-        fontFamily: FONT_TITLE,
-        fontSize: '28px',
-        color: '#2a2a3a',
-      })
-      .setOrigin(0.5)
+    titleText(this, GAME_W / 2, 28, 'Pokédex', { size: '26px', color: '#ffffff' })
+    bodyText(
+      this,
+      GAME_W / 2,
+      54,
+      `Vus ${save.seen.length} · Capturés ${save.roster.length} · Gen 1–${save.unlockedGen}`,
+      { size: '12px', color: '#f0d0d0' },
+    )
 
-    this.add
-      .text(GAME_W / 2, 58, `Vus ${save.seen.length} · Capturés ${save.roster.length} · Gen 1–${save.unlockedGen}`, {
-        fontFamily: FONT_UI,
-        fontSize: '13px',
-        color: '#6a6a7a',
-      })
-      .setOrigin(0.5)
+    drawPanel(this, 40, 80, 520, 380, { fill: 0xf8fcff, stroke: Theme.red, radius: 14 })
+    drawPanel(this, 580, 80, 340, 380, { fill: 0xf8fcff, stroke: Theme.blue, radius: 14 })
 
     await this.loadPage(maxId)
 
-    this.detail = this.add.text(600, 110, 'Sélectionne une entrée', {
-      fontFamily: FONT_UI,
+    this.detail = this.add.text(600, 250, 'Sélectionne une entrée', {
+      fontFamily: '"Nunito", system-ui, sans-serif',
       fontSize: '13px',
-      color: '#2a2a3a',
+      color: hexCss(Theme.ink),
       wordWrap: { width: 300 },
       lineSpacing: 5,
     })
 
-    this.add
-      .text(120, 500, '◀ Page', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: '#3090e0',
-        padding: { x: 10, y: 8 },
-      })
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', async () => {
+    makeButton(this, 120, 500, '◀ Page', {
+      tone: 'blue',
+      fontSize: '14px',
+      padX: 12,
+      padY: 8,
+      onClick: async () => {
         this.page = Math.max(0, this.page - 1)
         await this.loadPage(maxId)
-      })
-
-    this.add
-      .text(280, 500, 'Page ▶', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: '#3090e0',
-        padding: { x: 10, y: 8 },
-      })
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', async () => {
+      },
+    })
+    makeButton(this, 280, 500, 'Page ▶', {
+      tone: 'blue',
+      fontSize: '14px',
+      padX: 12,
+      padY: 8,
+      onClick: async () => {
         this.page += 1
         await this.loadPage(maxId)
-      })
-
-    this.add
-      .text(800, 500, 'Retour', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: '#e03028',
-        padding: { x: 10, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.scene.start('hub'))
+      },
+    })
+    makeBackButton(this)
   }
 
   async loadPage(maxId: number) {
@@ -117,37 +97,60 @@ export class PokedexScene extends Phaser.Scene {
     const mons = known.length ? await fetchMany(known) : []
     const map = new Map(mons.map((m) => [m.id, m]))
 
-    for (const m of mons) {
-      if (!this.textures.exists(m.spriteKey)) this.load.image(m.spriteKey, m.spriteUrl)
-    }
-    if (this.load.list.size > 0) {
-      await new Promise<void>((resolve) => {
-        this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
-        this.load.start()
-      })
-    }
+    await ensureTextures(
+      this,
+      mons.flatMap((m) => [
+        { key: m.spriteKey, url: m.spriteUrl },
+        { key: m.battleKey, url: m.battleUrl },
+      ]),
+    )
 
     ids.forEach((id, i) => {
       const col = i % 3
       const row = Math.floor(i / 3)
-      const x = 60 + col * 160
-      const y = 110 + row * 85
+      const x = 60 + col * 165
+      const y = 100 + row * 88
       const knownMon = map.get(id)
       const caught = save.roster.includes(id)
       const seen = save.seen.includes(id) || caught
-      const label = seen ? (knownMon?.nameFr ?? `#${id}`) : '???'
-      const t = this.add
-        .text(x, y, `${String(id).padStart(3, '0')} ${label}${caught ? ' ★' : ''}`, {
-          fontFamily: FONT_UI,
-          fontSize: '12px',
-          color: seen ? '#2a2a3a' : '#6a6a7a',
-          backgroundColor: seen ? '#fff8f0' : '#e8d8c8',
-          padding: { x: 8, y: 8 },
-        })
-        .setData('dexEntry', true)
+
+      const card = this.add.container(x, y).setData('dexEntry', true)
+      const g = this.add.graphics()
+      g.fillStyle(seen ? Theme.panel : 0xd8d0c8, 1)
+      g.fillRoundedRect(0, 0, 150, 76, 10)
+      g.lineStyle(2, seen ? Theme.red : Theme.muted, 1)
+      g.strokeRoundedRect(0, 0, 150, 76, 10)
+      card.add(g)
+
+      if (seen && knownMon && this.textures.exists(knownMon.battleKey)) {
+        const img = this.add.image(32, 38, knownMon.battleKey).setScale(1.15)
+        if (!caught) img.setTint(0x222233)
+        card.add(img)
+      } else {
+        card.add(this.add.circle(32, 38, 16, 0x888899))
+      }
+
+      card.add(
+        this.add.text(58, 14, String(id).padStart(3, '0'), {
+          fontFamily: '"Nunito", system-ui, sans-serif',
+          fontSize: '11px',
+          color: hexCss(Theme.muted),
+        }),
+      )
+      card.add(
+        this.add.text(58, 34, seen ? (knownMon?.nameFr ?? `#${id}`) : '???', {
+          fontFamily: '"Fredoka", "Nunito", sans-serif',
+          fontSize: '13px',
+          color: hexCss(seen ? Theme.ink : Theme.muted),
+          wordWrap: { width: 85 },
+        }),
+      )
+
       if (seen) {
-        t.setInteractive({ useHandCursor: true })
-        t.on('pointerdown', () => void this.showDetail(id))
+        card.setSize(150, 76)
+        card.setInteractive(new Phaser.Geom.Rectangle(0, 0, 150, 76), Phaser.Geom.Rectangle.Contains)
+        card.input!.cursor = 'pointer'
+        card.on('pointerdown', () => void this.showDetail(id))
       }
     })
 
@@ -156,20 +159,22 @@ export class PokedexScene extends Phaser.Scene {
 
   async showDetail(id: number) {
     const mon = await fetchMon(id)
-    if (!this.textures.exists(mon.spriteKey)) {
-      await new Promise<void>((resolve) => {
-        this.load.image(mon.spriteKey, mon.spriteUrl)
-        this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
-        this.load.start()
-      })
-    }
+    await ensureTextures(this, [{ key: mon.spriteKey, url: mon.spriteUrl }])
     this.sprite?.destroy()
-    this.sprite = this.add.image(750, 200, mon.spriteKey).setScale(0.28).setData('dexEntry', true)
-    const types = mon.types.map((t) => TYPE_FR[t] ?? t).join(' / ')
+    this.badges.forEach((b) => b.destroy())
+    this.badges = []
+
+    this.sprite = this.add.image(750, 170, mon.spriteKey).setScale(0.26).setData('dexEntry', true)
+    mon.types.forEach((t, i) => {
+      const badge = typeBadge(this, 660 + i * 70, 250, TYPE_FR[t] ?? t, TYPE_COLORS[t] ?? Theme.blue)
+      badge.setData('dexEntry', true)
+      this.badges.push(badge)
+    })
+
     const moves = mon.moves.map((m) => m.nameFr).join(', ')
+    this.detail.setPosition(600, 275)
     this.detail.setText(
       `${mon.nameFr} · ${mon.genusFr}\n` +
-        `Types ${types}\n` +
         `Talent ${mon.abilityNameFr}\n` +
         `PV ${mon.hp}  Atk ${mon.atk}  Déf ${mon.def}\n` +
         `AtqSp ${mon.spa}  DéfSp ${mon.spd}  Vit ${mon.spe}\n` +

@@ -303,6 +303,15 @@ function shinyUrl(id: number) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${id}.png`
 }
 
+/** Sprite home (portraits menus) — fallback artwork si manquant */
+export function homeSpriteUrl(id: number) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`
+}
+
+export function itemCdnUrl(apiName: string) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${apiName}.png`
+}
+
 function genFromId(id: number): number {
   for (let g = 1; g <= 9; g++) {
     if (id <= GEN_MAX_ID[g]) return g

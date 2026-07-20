@@ -1,182 +1,176 @@
 import Phaser from 'phaser'
 import { toggleMute } from '../audio'
 import { GAME_H, GAME_W } from '../config'
-import { claimMission, loadSave, writeSave } from '../data/pokeapi'
+import { claimMission, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { MISSION_DEFS, formatPokedollars } from '../data/types'
-import { FONT_TITLE, FONT_UI, Theme } from '../theme'
+import { Theme } from '../theme'
+import {
+  bodyText,
+  drawPanel,
+  drawRoom,
+  ensureTextures,
+  fadeIn,
+  goScene,
+  hexCss,
+  makeButton,
+  titleText,
+  walletBar,
+} from '../ui'
+
+const NAV = [
+  { title: 'ARÈNE', sub: 'Combats · loot Balls & Bonbons', accent: Theme.red, scene: 'arena', mascot: 25 },
+  { title: 'BANNIÈRES', sub: 'x1 / x10 · pity 4★ à 50', accent: Theme.gold, scene: 'gacha', mascot: 150 },
+  { title: 'DOJO', sub: 'Super Bonbon = +1 niveau', accent: Theme.grassDark, scene: 'train', mascot: 68 },
+  { title: 'ÉQUIPE / PC', sub: 'Roster & boîte PC', accent: Theme.blue, scene: 'team', mascot: 133 },
+  { title: 'POKÉ MART', sub: 'Balls · soins · Bonbons', accent: 0xe09030, scene: 'shop', mascot: 143 },
+  { title: 'POKÉDEX', sub: 'Espèces vues', accent: 0x3090a0, scene: 'pokedex', mascot: 151 },
+] as const
 
 export class HubScene extends Phaser.Scene {
   constructor() {
     super('hub')
   }
 
-  create() {
-    this.cameras.main.fadeIn(200, 126, 200, 227)
+  async create() {
+    fadeIn(this, Theme.pink)
+    drawRoom(this, 'centre')
     const save = loadSave()
-    this.drawBg()
 
-    this.add
-      .text(GAME_W / 2, 22, 'Centre Pokémon', {
-        fontFamily: FONT_TITLE,
-        fontSize: '26px',
-        color: '#2a2a3a',
-      })
-      .setOrigin(0.5)
+    titleText(this, GAME_W / 2, 28, 'Centre Pokémon', { size: '24px', color: '#ffffff' })
+    walletBar(
+      this,
+      52,
+      [
+        formatPokedollars(save.coins),
+        `${save.inventory.pokeball} Ball`,
+        `${save.inventory.rareCandy} Super Bonbon`,
+        `Région ${save.unlockedGen}`,
+      ],
+      { color: '#5a3040' },
+    )
 
-    this.add
-      .text(
-        GAME_W / 2,
-        50,
-        `${formatPokedollars(save.coins)} · ${save.inventory.pokeball} Ball · ${save.inventory.rareCandy} Super Bonbon · Région max ${save.unlockedGen}`,
-        { fontFamily: FONT_UI, fontSize: '12px', color: '#6a6a7a' },
-      )
-      .setOrigin(0.5)
+    const mascotIds = [...new Set(NAV.map((n) => n.mascot))]
+    const mons = await fetchMany(mascotIds, { full: false })
+    await ensureTextures(
+      this,
+      mons.map((m) => ({ key: m.battleKey, url: m.battleUrl })),
+    )
+    const byId = new Map(mons.map((m) => [m.id, m]))
 
-    const board = this.add.graphics()
-    board.fillStyle(0xd4a574, 1)
-    board.fillRoundedRect(40, 72, 560, 400, 12)
-    board.lineStyle(4, 0xa87848, 1)
-    board.strokeRoundedRect(40, 72, 560, 400, 12)
-
-    this.add.text(60, 88, 'Tableau d’affichage', {
-      fontFamily: FONT_TITLE,
-      fontSize: '16px',
-      color: '#5a3a20',
+    drawPanel(this, 28, 70, 580, 390, { stroke: Theme.red, radius: 16 })
+    this.add.text(48, 86, 'Tableau d’affichage', {
+      fontFamily: '"Fredoka", "Nunito", sans-serif',
+      fontSize: '15px',
+      color: hexCss(Theme.red),
     })
 
-    const posts: { title: string; sub: string; color: number; scene: string }[] = [
-      { title: 'ARÈNE', sub: 'Combats · loot Balls & Bonbons', color: 0xe03028, scene: 'arena' },
-      { title: 'BANNIÈRES', sub: 'x1 / x10 · pity 4★ à 50', color: 0x9b59d0, scene: 'gacha' },
-      { title: 'DOJO', sub: 'Super Bonbon = +1 niveau', color: 0x58a038, scene: 'train' },
-      { title: 'ÉQUIPE / PC', sub: 'Roster & boîte PC', color: 0x3090e0, scene: 'team' },
-      { title: 'POKÉ MART', sub: 'Poké Ball · soins · Super Bonbons', color: 0xe09030, scene: 'shop' },
-      { title: 'POKÉDEX', sub: 'Espèces vues', color: 0x3090a0, scene: 'pokedex' },
-    ]
-
-    posts.forEach((p, i) => {
+    NAV.forEach((p, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const x = 90 + col * 250
-      const y = 140 + row * 100
-      const note = this.add
-        .rectangle(x, y, 220, 78, 0xfff8f0)
-        .setStrokeStyle(3, p.color)
-        .setOrigin(0, 0)
-        .setInteractive({ useHandCursor: true })
-      this.add.circle(x + 12, y + 12, 6, p.color)
-      this.add.text(x + 28, y + 10, p.title, {
-        fontFamily: FONT_TITLE,
+      const x = 55 + col * 270
+      const y = 125 + row * 105
+      const note = this.add.container(x, y)
+      const bg = this.add.graphics()
+      bg.fillStyle(Theme.panel, 1)
+      bg.fillRoundedRect(0, 0, 250, 88, 12)
+      bg.lineStyle(3, p.accent, 1)
+      bg.strokeRoundedRect(0, 0, 250, 88, 12)
+      const mon = byId.get(p.mascot)
+      const img =
+        mon && this.textures.exists(mon.battleKey)
+          ? this.add.image(42, 44, mon.battleKey).setScale(1.35)
+          : this.add.circle(42, 44, 18, p.accent)
+      const title = this.add.text(80, 16, p.title, {
+        fontFamily: '"Fredoka", "Nunito", sans-serif',
         fontSize: '16px',
-        color: '#2a2a3a',
+        color: hexCss(Theme.ink),
       })
-      this.add.text(x + 28, y + 38, p.sub, {
-        fontFamily: FONT_UI,
-        fontSize: '12px',
-        color: '#6a6a7a',
+      const sub = this.add.text(80, 44, p.sub, {
+        fontFamily: '"Nunito", system-ui, sans-serif',
+        fontSize: '11px',
+        color: hexCss(Theme.muted),
+        wordWrap: { width: 155 },
       })
-      note.on('pointerover', () => note.setScale(1.02))
-      note.on('pointerout', () => note.setScale(1))
-      note.on('pointerdown', () => {
-        this.cameras.main.fadeOut(140, 126, 200, 227)
-        this.time.delayedCall(160, () => this.scene.start(p.scene))
+      note.add([bg, img, title, sub])
+      note.setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(0, 0, 250, 88),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true,
       })
+      note.on('pointerover', () => this.tweens.add({ targets: note, scale: 1.04, duration: 80 }))
+      note.on('pointerout', () => this.tweens.add({ targets: note, scale: 1, duration: 80 }))
+      note.on('pointerdown', () => goScene(this, p.scene, p.accent))
     })
 
-    this.add.rectangle(760, 270, 280, 380, Theme.panel).setStrokeStyle(4, Theme.red)
-    this.add
-      .text(760, 100, 'Quêtes du jour', {
-        fontFamily: FONT_TITLE,
-        fontSize: '16px',
-        color: '#e03028',
-      })
-      .setOrigin(0.5)
+    drawPanel(this, 630, 70, 300, 390, { stroke: Theme.blue, radius: 16 })
+    titleText(this, 780, 92, 'Quêtes du jour', { size: '16px', color: hexCss(Theme.blue) })
 
     save.missions.forEach((m, i) => {
       const def = MISSION_DEFS.find((d) => d.id === m.id)
       if (!def) return
-      const y = 140 + i * 72
-      const done = m.progress >= m.target
-      this.add.text(640, y, def.title, {
-        fontFamily: FONT_UI,
-        fontSize: '12px',
-        color: '#2a2a3a',
-        wordWrap: { width: 240 },
+      const y = 130 + i * 78
+      bodyText(this, 650, y, def.title, {
+        size: '12px',
+        color: hexCss(Theme.ink),
+        origin: 0,
+        wrap: 260,
       })
-      this.add.text(
-        640,
-        y + 22,
-        `${m.progress}/${m.target} · +${formatPokedollars(def.rewardCoins)} +${def.rewardBalls} Ball +${def.rewardRareCandy} SB`,
-        { fontFamily: FONT_UI, fontSize: '11px', color: '#6a6a7a' },
+      bodyText(
+        this,
+        650,
+        y + 24,
+        `${m.progress}/${m.target} · +${formatPokedollars(def.rewardCoins)} +${def.rewardBalls} Ball`,
+        { size: '11px', origin: 0 },
       )
+      const done = m.progress >= m.target
       if (done && !m.claimed) {
-        const btn = this.add
-          .text(640, y + 40, 'Réclamer', {
-            fontFamily: FONT_TITLE,
-            fontSize: '12px',
-            color: '#ffffff',
-            backgroundColor: '#58a038',
-            padding: { x: 8, y: 4 },
-          })
-          .setInteractive({ useHandCursor: true })
-        btn.on('pointerdown', () => {
-          const next = claimMission(loadSave(), m.id)
-          if (!next) return
-          writeSave(next)
-          this.scene.restart()
+        makeButton(this, 780, y + 52, 'Réclamer', {
+          tone: 'green',
+          fontSize: '12px',
+          padX: 10,
+          padY: 5,
+          onClick: () => {
+            const next = claimMission(loadSave(), m.id)
+            if (!next) return
+            writeSave(next)
+            this.scene.restart()
+          },
         })
       } else if (m.claimed) {
-        this.add.text(640, y + 40, 'OK', { fontFamily: FONT_UI, fontSize: '12px', color: '#58a038' })
+        bodyText(this, 780, y + 52, 'OK', { size: '12px', color: hexCss(Theme.grassDark) })
       }
     })
 
-    const auto = this.add
-      .text(120, 510, save.autoMode ? 'Mode auto : ON' : 'Mode auto : OFF', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: save.autoMode ? '#58a038' : '#6a6a7a',
-        padding: { x: 12, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-    auto.on('pointerdown', () => {
-      const s = loadSave()
-      s.autoMode = !s.autoMode
-      writeSave(s)
-      this.scene.restart()
+    makeButton(this, 120, GAME_H - 28, save.autoMode ? 'Auto ON' : 'Auto OFF', {
+      tone: save.autoMode ? 'green' : 'ghost',
+      fontSize: '13px',
+      padX: 12,
+      padY: 8,
+      onClick: () => {
+        const s = loadSave()
+        s.autoMode = !s.autoMode
+        writeSave(s)
+        this.scene.restart()
+      },
     })
 
-    this.add
-      .text(320, 510, save.mute ? 'Son off' : 'Son on', {
-        fontFamily: FONT_UI,
-        fontSize: '14px',
-        color: '#2a2a3a',
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
+    makeButton(this, 280, GAME_H - 28, save.mute ? 'Son off' : 'Son on', {
+      tone: 'ghost',
+      fontSize: '13px',
+      padX: 12,
+      padY: 8,
+      onClick: () => {
         toggleMute()
         this.scene.restart()
-      })
+      },
+    })
 
-    this.add
-      .text(520, 510, 'Menu', {
-        fontFamily: FONT_TITLE,
-        fontSize: '14px',
-        color: '#ffffff',
-        backgroundColor: '#e03028',
-        padding: { x: 12, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.scene.start('title'))
-  }
-
-  drawBg() {
-    const g = this.add.graphics()
-    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.grass, 1)
-    g.fillRect(0, GAME_H - 50, GAME_W, 50)
+    makeButton(this, 430, GAME_H - 28, 'Menu', {
+      tone: 'red',
+      fontSize: '13px',
+      padX: 12,
+      padY: 8,
+      onClick: () => goScene(this, 'title'),
+    })
   }
 }
