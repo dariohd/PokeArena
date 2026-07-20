@@ -24,7 +24,7 @@ import {
   type MonSummary,
 } from '../data/types'
 import { Fighter } from '../entities/Fighter'
-import { ARENA_FAR_Y, ARENA_NEAR_Y, drawPerspectiveArena, spawnDriftClouds } from '../fx'
+import { ARENA_FAR_Y, ARENA_NEAR_Y, drawPerspectiveArena } from '../fx'
 
 export class ArenaScene extends Phaser.Scene {
   private player!: Fighter
@@ -344,7 +344,6 @@ export class ArenaScene extends Phaser.Scene {
 
   drawArena() {
     drawPerspectiveArena(this)
-    spawnDriftClouds(this, 2)
   }
 
   async ensureMon(id: number, levelHint = 40, full = false): Promise<MonSummary> {

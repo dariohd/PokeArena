@@ -66,44 +66,19 @@ export function spawnDriftClouds(scene: Phaser.Scene, depth = 2) {
   return clouds
 }
 
-/** Sol arène en perspective (trapèze 2.5D) */
+/** Sol arène simple (lisible, pas de décor inventé) */
 export function drawPerspectiveArena(scene: Phaser.Scene) {
   const g = scene.add.graphics().setDepth(0)
-
-  // Ciel
-  g.fillGradientStyle(0x6bb8e0, 0x6bb8e0, 0xc8e8f8, 0xc8e8f8, 1)
-  g.fillRect(0, 0, GAME_W, 210)
-
-  // Horizon / collines lointaines
-  g.fillStyle(0x4a9a38, 1)
-  g.fillEllipse(160, 200, 340, 70)
-  g.fillEllipse(780, 190, 300, 60)
-  g.fillStyle(0x3d8230, 1)
-  g.fillRect(0, 200, GAME_W, 40)
-
-  // Plancher perspective (trapèze)
-  g.fillStyle(0x58a040, 1)
+  g.fillStyle(0x5a9ec8, 1)
+  g.fillRect(0, 0, GAME_W, 220)
+  g.fillStyle(0x4a8a38, 1)
   g.fillRect(0, 220, GAME_W, GAME_H - 220)
-
-  // Plateforme de combat (trapèze clair)
-  g.fillStyle(0xd4b45a, 1)
-  g.fillTriangle(GAME_W / 2, 235, 40, GAME_H - 30, GAME_W - 40, GAME_H - 30)
-  g.fillStyle(0xe8c878, 1)
-  g.fillTriangle(GAME_W / 2, 250, 90, GAME_H - 50, GAME_W - 90, GAME_H - 50)
   g.fillStyle(0xc9a24a, 1)
-  g.fillTriangle(GAME_W / 2, 265, 140, GAME_H - 70, GAME_W - 140, GAME_H - 70)
-
-  // Lignes de perspective
-  g.lineStyle(2, 0xffffff, 0.22)
-  g.lineBetween(GAME_W / 2, 250, 90, GAME_H - 50)
-  g.lineBetween(GAME_W / 2, 250, GAME_W - 90, GAME_H - 50)
-  g.lineStyle(3, 0xffffff, 0.35)
-  g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 40, 420, 90)
-
-  // Bande HUD soft en bas
-  g.fillStyle(0x000000, 0.12)
-  g.fillRect(0, GAME_H - 96, GAME_W, 96)
-
+  g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 640, 220)
+  g.fillStyle(0xb89040, 1)
+  g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 560, 180)
+  g.lineStyle(2, 0xffffff, 0.35)
+  g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 40, 560, 180)
   return g
 }
 

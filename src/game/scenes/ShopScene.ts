@@ -1,12 +1,11 @@
 import Phaser from 'phaser'
+import { paintArtBackdrop } from '../backdrop'
 import { GAME_W } from '../config'
 import { buyItem, loadSave, writeSave } from '../data/pokeapi'
 import { SHOP_CATALOG, formatPokedollars, type InventoryKey } from '../data/types'
 import { Theme } from '../theme'
 import {
   bodyText,
-  drawPanel,
-  drawRoom,
   ensureItemIcons,
   fadeIn,
   hexCss,
@@ -23,12 +22,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   async create() {
-    fadeIn(this, Theme.martBlue)
-    drawRoom(this, 'mart')
+    fadeIn(this, 0x0b0d12)
+    await paintArtBackdrop(this, 52, { dim: 0.62, zoom: 1.25, tint: 0x9098a8 })
     await ensureItemIcons(this)
 
     const save = loadSave()
-    titleText(this, GAME_W / 2, 28, 'Poké Mart', { size: '26px', color: '#ffffff' })
+    titleText(this, GAME_W / 2, 28, 'Poké Mart', { size: '26px', color: '#ffffff' }).setDepth(20)
     walletBar(
       this,
       54,
@@ -37,8 +36,8 @@ export class ShopScene extends Phaser.Scene {
         `${save.inventory.pokeball} Ball`,
         `${save.inventory.rareCandy} Super Bonbon`,
       ],
-      { color: '#e8f0f8' },
-    )
+      { color: 'rgba(255,255,255,0.8)' },
+    ).setDepth(20)
 
     SHOP_CATALOG.forEach((item, i) => {
       const col = i % 2
@@ -48,32 +47,34 @@ export class ShopScene extends Phaser.Scene {
       const can = save.coins >= item.price
       const owned = save.inventory[item.id as InventoryKey] ?? 0
 
-      drawPanel(this, x, y, 430, 86, {
-        stroke: can ? Theme.blue : Theme.muted,
-        radius: 12,
-        fill: can ? Theme.panel : Theme.panelDeep,
-      })
+      this.add.rectangle(x + 215, y + 43, 430, 86, 0x000000, 0.55).setDepth(12)
+      this.add
+        .rectangle(x + 215, y + 43, 430, 86)
+        .setStrokeStyle(2, can ? Theme.blue : Theme.muted)
+        .setDepth(12)
 
       const key = itemTextureKey(item.id)
       if (this.textures.exists(key)) {
-        this.add.image(x + 44, y + 43, key).setScale(2.2)
+        this.add.image(x + 44, y + 43, key).setScale(2.2).setDepth(13)
       }
 
-      this.add.text(x + 90, y + 14, item.label, {
-        fontFamily: '"Fredoka", "Nunito", sans-serif',
-        fontSize: '16px',
-        color: hexCss(can ? Theme.ink : Theme.muted),
-      })
+      this.add
+        .text(x + 90, y + 14, item.label, {
+          fontFamily: '"Fredoka", "Nunito", sans-serif',
+          fontSize: '16px',
+          color: hexCss(can ? Theme.white : Theme.muted),
+        })
+        .setDepth(13)
       bodyText(this, x + 90, y + 40, `${item.desc} · stock ${owned}`, {
         size: '12px',
         origin: 0,
-        color: hexCss(Theme.muted),
-      })
+        color: 'rgba(255,255,255,0.6)',
+      }).setDepth(13)
       bodyText(this, x + 90, y + 60, formatPokedollars(item.price), {
         size: '13px',
         origin: 0,
-        color: hexCss(can ? Theme.blueDark : Theme.muted),
-      })
+        color: hexCss(can ? Theme.gold : Theme.muted),
+      }).setDepth(13)
 
       if (can) {
         makeButton(this, x + 360, y + 43, 'Acheter', {
@@ -87,10 +88,10 @@ export class ShopScene extends Phaser.Scene {
             writeSave(next)
             this.scene.restart()
           },
-        })
+        }).setDepth(14)
       }
     })
 
-    makeBackButton(this)
+    makeBackButton(this).setDepth(30)
   }
 }

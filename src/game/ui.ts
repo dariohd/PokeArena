@@ -30,93 +30,23 @@ export function goScene(scene: Phaser.Scene, key: string, color: number = Theme.
   scene.time.delayedCall(170, () => scene.scene.start(key))
 }
 
-/** Fond de salle distinct par lieu */
+/** Fond de salle : aplats sobres (pas de décor inventé). */
 export function drawRoom(scene: Phaser.Scene, kind: RoomKind, accent: number = Theme.red) {
   const g = scene.add.graphics()
-  if (kind === 'outdoor') {
-    g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.grass, 1)
-    g.fillRect(0, GAME_H - 110, GAME_W, 110)
-    g.fillStyle(Theme.grassDark, 1)
-    for (let x = -10; x < GAME_W; x += 36) {
-      g.fillTriangle(x, GAME_H - 110, x + 18, GAME_H - 138, x + 36, GAME_H - 110)
-    }
-    return g
+  const fills: Record<RoomKind, number> = {
+    outdoor: 0x1a2838,
+    centre: 0x141018,
+    mart: 0x102030,
+    dojo: 0x201810,
+    dex: 0x280c0c,
+    machine: 0x12141c,
+    pc: 0x0c1828,
+    result: 0x121820,
   }
-  if (kind === 'centre') {
-    g.fillGradientStyle(0xfff0f4, 0xfff0f4, Theme.pinkSoft, Theme.pinkSoft, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.pink, 1)
-    g.fillRect(0, 0, GAME_W, 56)
-    g.fillStyle(Theme.white, 1)
-    g.fillRect(0, 56, GAME_W, 8)
-    g.fillStyle(Theme.centreFloor, 1)
-    g.fillRect(0, GAME_H - 64, GAME_W, 64)
-    g.fillStyle(0xe8d8c8, 1)
-    for (let x = 0; x < GAME_W; x += 48) g.fillRect(x, GAME_H - 64, 24, 64)
-    return g
-  }
-  if (kind === 'mart') {
-    g.fillGradientStyle(0xb8d4ec, 0xb8d4ec, 0x7eb0d8, 0x7eb0d8, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.martBlue, 1)
-    g.fillRect(0, 0, GAME_W, 64)
-    g.fillStyle(Theme.martShelf, 1)
-    g.fillRect(24, 90, GAME_W - 48, 360)
-    g.fillStyle(0x1e4060, 0.35)
-    for (let y = 150; y < 430; y += 70) g.fillRect(36, y, GAME_W - 72, 4)
-    return g
-  }
-  if (kind === 'dojo') {
-    g.fillGradientStyle(0xf0d8b0, 0xf0d8b0, 0xd8b078, 0xd8b078, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.dojoWood, 1)
-    g.fillRect(0, 0, GAME_W, 58)
-    g.fillStyle(Theme.dojoDark, 1)
-    for (let x = 0; x < GAME_W; x += 40) g.fillRect(x, 58, 2, GAME_H - 58)
-    g.fillStyle(0xa86830, 0.25)
-    g.fillEllipse(GAME_W / 2, GAME_H - 40, 520, 70)
-    return g
-  }
-  if (kind === 'dex') {
-    g.fillGradientStyle(Theme.dexRed, Theme.dexRed, Theme.dexDark, Theme.dexDark, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(0x1a1a28, 1)
-    g.fillRoundedRect(28, 72, GAME_W - 56, GAME_H - 120, 18)
-    g.fillStyle(0x88e0f0, 0.12)
-    g.fillRoundedRect(40, 84, GAME_W - 80, GAME_H - 144, 12)
-    g.fillStyle(Theme.white, 1)
-    g.fillCircle(70, 40, 10)
-    g.fillStyle(0x48c8f0, 1)
-    g.fillCircle(70, 40, 6)
-    return g
-  }
-  if (kind === 'machine') {
-    g.fillGradientStyle(0x2d3748, 0x2d3748, 0x1a202c, 0x1a202c, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(Theme.machine, 1)
-    g.fillRoundedRect(40, 70, GAME_W - 80, GAME_H - 140, 16)
-    g.lineStyle(5, accent, 1)
-    g.strokeRoundedRect(40, 70, GAME_W - 80, GAME_H - 140, 16)
-    g.fillStyle(Theme.machineLite, 0.35)
-    g.fillRoundedRect(56, 86, GAME_W - 112, 36, 8)
-    return g
-  }
-  if (kind === 'pc') {
-    g.fillGradientStyle(0x1e3a5f, 0x1e3a5f, 0x0f2240, 0x0f2240, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-    g.fillStyle(0x88c8f0, 1)
-    g.fillRoundedRect(36, 70, GAME_W - 72, GAME_H - 130, 14)
-    g.fillStyle(0xe8f6ff, 1)
-    g.fillRoundedRect(48, 82, GAME_W - 96, GAME_H - 154, 10)
-    return g
-  }
-  // result
-  g.fillGradientStyle(Theme.skyTop, Theme.skyTop, Theme.skyBot, Theme.skyBot, 1)
+  g.fillStyle(fills[kind] ?? 0x101018, 1)
   g.fillRect(0, 0, GAME_W, GAME_H)
-  g.fillStyle(Theme.grass, 1)
-  g.fillRect(0, GAME_H - 80, GAME_W, 80)
+  g.fillStyle(accent, 0.12)
+  g.fillRect(0, 0, GAME_W, 52)
   return g
 }
 
@@ -338,7 +268,7 @@ export async function ensureTextures(
   }
 }
 
-/** Orbe menu glossy (style hub gacha) */
+/** Orbe menu sobre */
 export function makeGlassOrb(
   scene: Phaser.Scene,
   x: number,
@@ -349,19 +279,15 @@ export function makeGlassOrb(
 ) {
   const container = scene.add.container(x, y)
   const g = scene.add.graphics()
-  g.fillStyle(0x000000, 0.35)
-  g.fillRoundedRect(-108, -22, 216, 44, 22)
-  g.fillStyle(0xffffff, 0.12)
-  g.fillRoundedRect(-108, -22, 216, 44, 22)
-  g.lineStyle(2, accent, 0.95)
-  g.strokeRoundedRect(-108, -22, 216, 44, 22)
+  g.fillStyle(0x000000, 0.55)
+  g.fillRoundedRect(-108, -22, 216, 44, 10)
+  g.lineStyle(2, accent, 1)
+  g.strokeRoundedRect(-108, -22, 216, 44, 10)
   g.fillStyle(accent, 1)
-  g.fillCircle(-84, 0, 8)
-  g.fillStyle(0xffffff, 0.35)
-  g.fillRoundedRect(-100, -18, 100, 10, 6)
+  g.fillCircle(-84, 0, 6)
 
   const text = scene.add
-    .text(-60, 0, label, {
+    .text(-66, 0, label, {
       fontFamily: FONT_TITLE,
       fontSize: '16px',
       color: '#ffffff',
@@ -376,36 +302,13 @@ export function makeGlassOrb(
     useHandCursor: true,
   })
   container.on('pointerover', () => {
-    scene.tweens.add({ targets: container, scale: 1.06, x: x + 6, duration: 100 })
+    scene.tweens.add({ targets: container, scale: 1.04, duration: 80 })
   })
   container.on('pointerout', () => {
-    scene.tweens.add({ targets: container, scale: 1, x, duration: 100 })
+    scene.tweens.add({ targets: container, scale: 1, duration: 80 })
   })
   container.on('pointerdown', onClick)
   return container
-}
-
-/** Fond cinématique hub (pas de rose centre plat) */
-export function drawCinematicLobby(scene: Phaser.Scene) {
-  const g = scene.add.graphics().setDepth(0)
-  g.fillGradientStyle(0x0a1020, 0x0a1020, 0x1a2848, 0x1a2848, 1)
-  g.fillRect(0, 0, GAME_W, GAME_H)
-  g.fillGradientStyle(0x1a2848, 0x1a2848, 0x2a4068, 0x3a5080, 1)
-  g.fillRect(0, GAME_H * 0.35, GAME_W, GAME_H * 0.65)
-
-  // Sol miroir
-  g.fillStyle(0x121a30, 1)
-  g.fillEllipse(GAME_W * 0.58, GAME_H * 0.88, 520, 90)
-  g.fillStyle(0xffffff, 0.04)
-  g.fillEllipse(GAME_W * 0.58, GAME_H * 0.86, 420, 50)
-
-  // Rayons soft
-  g.fillStyle(0x4a90d8, 0.06)
-  g.fillTriangle(GAME_W * 0.7, -20, GAME_W * 0.55, GAME_H, GAME_W * 0.85, GAME_H)
-  g.fillStyle(0xe3350d, 0.05)
-  g.fillTriangle(GAME_W * 0.45, -40, GAME_W * 0.3, GAME_H, GAME_W * 0.55, GAME_H)
-
-  return g
 }
 
 export async function ensureItemIcons(scene: Phaser.Scene, keys: InventoryKey[] = Object.keys(ITEM_SPRITE) as InventoryKey[]) {

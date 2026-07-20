@@ -1,38 +1,32 @@
 import Phaser from 'phaser'
+import { paintArtBackdrop } from '../backdrop'
 import { GAME_W } from '../config'
 import type { ArenaResult } from '../data/types'
 import { loadSave } from '../data/pokeapi'
 import { formatPokedollars } from '../data/types'
 import { Theme } from '../theme'
-import {
-  bodyText,
-  drawPanel,
-  drawRoom,
-  fadeIn,
-  goScene,
-  hexCss,
-  makeButton,
-  titleText,
-} from '../ui'
+import { bodyText, fadeIn, goScene, makeButton, titleText } from '../ui'
 
 export class ResultScene extends Phaser.Scene {
   constructor() {
     super('result')
   }
 
-  create(data: ArenaResult) {
-    fadeIn(this)
-    drawRoom(this, 'result')
-    drawPanel(this, 140, 55, 680, 410, {
-      stroke: data.won ? Theme.grassDark : Theme.red,
-      radius: 18,
+  async create(data: ArenaResult) {
+    fadeIn(this, 0x0b0d12)
+    await paintArtBackdrop(this, data.won ? 151 : 94, {
+      dim: 0.58,
+      zoom: 1.3,
+      tint: data.won ? 0xa0b090 : 0x908080,
     })
 
-    const save = loadSave()
-    const title = data.won ? 'Victoire !' : 'K.O…'
-    const color = data.won ? hexCss(Theme.grassDark) : hexCss(Theme.red)
+    this.add.rectangle(GAME_W / 2, 270, 680, 400, 0x000000, 0.55).setDepth(10)
 
-    titleText(this, GAME_W / 2, 95, title, { size: '40px', color })
+    const save = loadSave()
+    titleText(this, GAME_W / 2, 95, data.won ? 'Victoire' : 'K.O.', {
+      size: '40px',
+      color: data.won ? hexCss(Theme.grassDark) : hexCss(Theme.red),
+    }).setDepth(20)
 
     const lines = [
       `Vague · ${data.wave}`,
@@ -40,15 +34,14 @@ export class ResultScene extends Phaser.Scene {
       `K.O. · ${data.kos}`,
       `Dégâts · ${data.damageDealt}`,
       `XP · ${data.xpGained}`,
-      `Stock · ${save.inventory.pokeball} Poké Ball · ${save.inventory.rareCandy} Super Bonbon`,
+      `Stock · ${save.inventory.pokeball} Ball · ${save.inventory.rareCandy} SB`,
       `Total · ${formatPokedollars(save.coins)} · record ${save.bestWave}`,
     ]
-
     lines.forEach((line, i) => {
       bodyText(this, GAME_W / 2, 150 + i * 30, line, {
         size: '15px',
-        color: hexCss(Theme.ink),
-      })
+        color: '#ffffff',
+      }).setDepth(20)
     })
 
     makeButton(this, GAME_W / 2 - 140, 430, 'Rejouer', {
@@ -57,20 +50,24 @@ export class ResultScene extends Phaser.Scene {
       padX: 16,
       padY: 10,
       onClick: () => goScene(this, 'arena'),
-    })
+    }).setDepth(30)
     makeButton(this, GAME_W / 2, 430, 'Centre', {
       tone: 'green',
       fontSize: '16px',
       padX: 16,
       padY: 10,
       onClick: () => goScene(this, 'hub'),
-    })
+    }).setDepth(30)
     makeButton(this, GAME_W / 2 + 140, 430, 'Menu', {
       tone: 'red',
       fontSize: '16px',
       padX: 16,
       padY: 10,
       onClick: () => goScene(this, 'title'),
-    })
+    }).setDepth(30)
   }
+}
+
+function hexCss(n: number): string {
+  return `#${n.toString(16).padStart(6, '0')}`
 }
