@@ -13,7 +13,7 @@ import {
   type RegionId,
 } from '../data/types'
 import { summonBurst } from '../fx'
-import { L, contentCard, drawShell, listRow, rarityFlash, sectionTitle } from '../layout'
+import { L, drawShell, listRow, rarityFlash } from '../layout'
 import { Theme } from '../theme'
 import { bodyText, drawPokeBall, ensureTextures, fadeIn, makeButton, starsLabel } from '../ui'
 
@@ -31,6 +31,7 @@ export class GachaScene extends Phaser.Scene {
   private selected?: RegionBanner
   private veil?: Phaser.GameObjects.Rectangle
   private ballGfx?: Phaser.GameObjects.Graphics
+  private hintRing?: Phaser.GameObjects.Ellipse
 
   constructor() {
     super('gacha')
@@ -53,33 +54,36 @@ export class GachaScene extends Phaser.Scene {
   }
 
   async drawPick(banners: RegionBanner[], unlockedGen: number) {
-    await paintScene(this, BG.gachaDark, { dim: 0.4 })
+    await paintScene(this, BG.gachaDark, { dim: 0.42 })
     const zone = drawShell(this, { title: 'Bannières', back: true, accent: Theme.gold })
 
-    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12, accent: Theme.gold })
-    sectionTitle(this, zone.x + 20, zone.y + 18, 'Régions débloquées')
+    bodyText(this, zone.x, zone.y + 8, 'Choisis une région', {
+      size: '13px',
+      color: 'rgba(255,255,255,0.6)',
+      origin: 0,
+    }).setDepth(20)
 
     banners.forEach((b, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const cellW = (zone.w - 48) / 2
-      const x = zone.x + 20 + col * (cellW + 8)
-      const y = zone.y + 52 + row * 88
+      const cellW = (zone.w - 24) / 2
+      const x = zone.x + col * (cellW + 12)
+      const y = zone.y + 40 + row * 70
       const pity = loadSave().gachaPityByBanner[b.id] ?? 0
-      listRow(this, x, y, cellW, 76, {
+      listRow(this, x, y, cellW, 58, {
         title: b.nameFr,
-        sub: `${b.gamesFr} · Pity ${pity}/${GACHA_PITY}`,
+        sub: `${b.gamesFr} · pity ${pity}/${GACHA_PITY}`,
         accent: b.color,
         onClick: () => this.scene.restart({ bannerId: b.id }),
         depth: 14,
-        delay: 30 + i * 40,
+        delay: 20 + i * 30,
       })
     })
 
     if (unlockedGen < 9) {
-      bodyText(this, GAME_W / 2, zone.y + zone.h - 28, 'Gagne des arènes pour débloquer d’autres régions', {
-        size: '13px',
-        color: 'rgba(255,255,255,0.55)',
+      bodyText(this, GAME_W / 2, zone.y + zone.h - 16, 'Gagne des arènes pour débloquer d’autres régions', {
+        size: '12px',
+        color: 'rgba(255,255,255,0.5)',
       }).setDepth(20)
     }
   }
@@ -88,60 +92,46 @@ export class GachaScene extends Phaser.Scene {
     const b = this.selected!
     const save = loadSave()
     const pity = save.gachaPityByBanner[b.id] ?? 0
-    await paintScene(this, BG.gacha, { dim: 0.42 })
-    const zone = drawShell(this, { title: `Bannière · ${b.nameFr}`, back: true, accent: b.color })
+    await paintScene(this, BG.gacha, { dim: 0.45 })
+    drawShell(this, { title: b.nameFr, back: true, accent: b.color })
 
-    contentCard(this, zone.cx - 260, zone.y + 8, 520, zone.h - 16, {
-      accent: b.color,
-      depth: 12,
-    })
-
-    bodyText(this, GAME_W / 2, zone.y + 36, b.gamesFr, {
-      size: '14px',
-      color: 'rgba(255,255,255,0.7)',
+    bodyText(this, GAME_W / 2, L.contentY + 16, b.gamesFr, {
+      size: '13px',
+      color: 'rgba(255,255,255,0.65)',
     }).setDepth(20)
 
     this.status = bodyText(
       this,
       GAME_W / 2,
-      zone.y + zone.h - 48,
+      L.contentY + 42,
       `Pity 4★ ${pity}/${GACHA_PITY} · x10 = 3★ garanti`,
-      { size: '14px', color: 'rgba(255,255,255,0.85)' },
+      { size: '13px', color: 'rgba(255,255,255,0.85)' },
     ).setDepth(20)
 
-    // Spot vide au centre
-    const spot = this.add.ellipse(GAME_W / 2, L.contentCenterY + 40, 220, 48, 0x000000, 0.35).setDepth(13)
-    this.tweens.add({
-      targets: spot,
-      scaleX: 1.06,
-      alpha: 0.22,
-      duration: 1400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
+    // Spot sobre
+    this.add.ellipse(GAME_W / 2, L.contentCenterY + 50, 180, 36, 0x000000, 0.3).setDepth(11)
 
-    makeButton(this, GAME_W / 2 - 130, L.dockY, `x1 · ${GACHA_BALL_COST}`, {
+    makeButton(this, GAME_W / 2 - 110, L.dockY, `x1 · ${GACHA_BALL_COST}`, {
       tone: 'gold',
-      fontSize: '16px',
-      padX: 20,
-      padY: 10,
+      fontSize: '14px',
+      padX: 18,
+      padY: 9,
       onClick: () => void this.doPull(false),
     }).setDepth(102)
 
-    makeButton(this, GAME_W / 2 + 130, L.dockY, `x10 · ${GACHA_MULTI_BALL_COST}`, {
+    makeButton(this, GAME_W / 2 + 110, L.dockY, `x10 · ${GACHA_MULTI_BALL_COST}`, {
       tone: 'red',
-      fontSize: '16px',
-      padX: 20,
-      padY: 10,
+      fontSize: '14px',
+      padX: 18,
+      padY: 9,
       onClick: () => void this.doPull(true),
     }).setDepth(102)
 
-    makeButton(this, GAME_W - 120, L.dockY, 'Régions', {
+    makeButton(this, GAME_W - 110, L.dockY, 'Régions', {
       tone: 'dark',
-      fontSize: '14px',
-      padX: 14,
-      padY: 10,
+      fontSize: '12px',
+      padX: 12,
+      padY: 8,
       onClick: () => this.scene.restart(),
     }).setDepth(102)
   }
@@ -164,7 +154,7 @@ export class GachaScene extends Phaser.Scene {
       writeSave(res.save)
       for (const r of res.results) await this.showPull(r.id, r.stars, r.shiny, true)
       const best = Math.max(...res.results.map((r) => r.stars))
-      this.status.setText(`x10 terminé · meilleur ${starsLabel(best)}`)
+      this.status.setText(`x10 · meilleur ${starsLabel(best)}`)
     } else {
       const res = await pullGacha(save, this.selected.id)
       if (!res) {
@@ -176,76 +166,122 @@ export class GachaScene extends Phaser.Scene {
       await this.showPull(res.id, res.stars, res.shiny, false)
     }
     const pity = loadSave().gachaPityByBanner[this.selected.id] ?? 0
-    this.status.setText(`${this.status.text}\nPity 4★ ${pity}/${GACHA_PITY}`)
+    this.status.setText(`Pity 4★ ${pity}/${GACHA_PITY}`)
     this.busy = false
   }
 
+  /** Suspense 2–3s (plus long si 3★/4★), puis reveal */
   async showPull(id: number, stars: number, shiny: boolean, multi: boolean) {
-    this.status.setText(multi ? 'Ouverture…' : 'Invocation…')
+    this.status.setText('…')
     this.preview?.destroy()
     this.ballGfx?.destroy()
     this.veil?.destroy()
-
-    this.veil = this.add
-      .rectangle(0, 0, GAME_W, GAME_H, 0x000000, 0.55)
-      .setOrigin(0)
-      .setDepth(30)
+    this.hintRing?.destroy()
 
     const cx = GAME_W / 2
-    const cy = L.contentCenterY - 10
-    this.ballGfx = drawPokeBall(this, cx, cy, stars >= 4 ? 52 : 44).setDepth(35)
+    const cy = L.contentCenterY - 8
 
-    // Shake ball
-    this.tweens.add({
-      targets: this.ballGfx,
-      x: cx + 10,
-      duration: 50,
-      yoyo: true,
-      repeat: 7,
-      ease: 'Sine.easeInOut',
+    // Précharge pendant le suspense
+    const monPromise = fetchMon(id, { full: false }).then(async (mon) => {
+      await ensureTextures(this, [{ key: mon.homeKey, url: mon.homeUrl }])
+      return mon
     })
-    await this.wait(stars >= 3 ? 520 : 360)
+
+    this.veil = this.add
+      .rectangle(0, 0, GAME_W, GAME_H, 0x000000, 0.62)
+      .setOrigin(0)
+      .setDepth(30)
+      .setAlpha(0)
+    this.tweens.add({ targets: this.veil, alpha: 0.62, duration: 280 })
+
+    const ballR = stars >= 4 ? 40 : 34
+    this.ballGfx = drawPokeBall(this, cx, cy, ballR).setDepth(35)
+
+    // Teinte d’ambiance selon rareté (indice, pas spoiler total)
+    const color = STAR_COLOR[stars] ?? 0xffffff
+    this.hintRing = this.add.ellipse(cx, cy, 120, 120, color, 0).setDepth(34)
+    this.tweens.add({
+      targets: this.hintRing,
+      alpha: stars >= 3 ? 0.22 : 0.08,
+      scaleX: 1.4,
+      scaleY: 1.4,
+      duration: 900,
+      yoyo: true,
+      repeat: 2,
+    })
+
+    // Suspense : shakes escaladés
+    const suspenseMs = multi
+      ? stars >= 4
+        ? 2200
+        : stars >= 3
+          ? 1600
+          : 900
+      : stars >= 4
+        ? 2800
+        : stars >= 3
+          ? 2200
+          : 1600
+
+    const shakes = stars >= 4 ? 5 : stars >= 3 ? 4 : 3
+    for (let s = 0; s < shakes; s++) {
+      this.tweens.add({
+        targets: this.ballGfx,
+        angle: s % 2 === 0 ? 14 : -14,
+        x: cx + (s % 2 === 0 ? 8 : -8),
+        duration: 70 + s * 15,
+        yoyo: true,
+        repeat: 1,
+        delay: s * (suspenseMs / shakes) * 0.85,
+      })
+      if (stars >= 3 && s === shakes - 1) {
+        this.cameras.main.shake(40, 0.003)
+      }
+      await this.wait(suspenseMs / shakes)
+    }
+
+    // Pause finale avant ouverture
+    await this.wait(stars >= 3 ? 280 : 120)
 
     rarityFlash(this, stars)
     this.ballGfx.destroy()
     this.ballGfx = undefined
+    this.hintRing?.destroy()
+    this.hintRing = undefined
 
-    const mon = await fetchMon(id, { full: false })
-    await ensureTextures(this, [{ key: mon.homeKey, url: mon.homeUrl }])
-
-    const color = STAR_COLOR[stars] ?? 0xffffff
-    summonBurst(this, cx, cy, color, stars >= 4 ? 36 : stars >= 3 ? 22 : 12)
+    const mon = await monPromise
+    summonBurst(this, cx, cy, color, stars >= 4 ? 28 : stars >= 3 ? 16 : 8)
 
     this.preview = this.add
       .image(cx, cy, mon.homeKey)
-      .setScale(0.06)
+      .setScale(0.05)
       .setDepth(40)
       .setAlpha(0)
     if (shiny) this.preview.setTint(0xfff1a8)
 
-    const targetScale = stars >= 4 ? 0.48 : stars >= 3 ? 0.42 : 0.36
+    const targetScale = stars >= 4 ? 0.4 : stars >= 3 ? 0.34 : 0.28
     this.tweens.add({
       targets: this.preview,
       alpha: 1,
       scale: targetScale,
-      duration: stars >= 4 ? 420 : 280,
+      duration: 360,
       ease: 'Back.easeOut',
     })
 
     playCry(mon.cryUrl, 0.4)
-    this.status.setText(`${mon.nameFr}${shiny ? ' chromatique' : ''}\n${starsLabel(stars)}`)
+    this.status.setText(`${mon.nameFr}${shiny ? ' chromatique' : ''}  ${starsLabel(stars)}`)
 
     const hold = multi
       ? stars >= 4
-        ? 700
+        ? 900
         : stars >= 3
-          ? 420
-          : 220
+          ? 550
+          : 280
       : stars >= 4
-        ? 1100
+        ? 1400
         : stars >= 3
-          ? 750
-          : 550
+          ? 1000
+          : 700
 
     await this.wait(hold)
 

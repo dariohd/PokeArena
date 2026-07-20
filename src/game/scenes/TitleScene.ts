@@ -2,16 +2,13 @@ import Phaser from 'phaser'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { GAME_H, GAME_W } from '../config'
-import { contentCard } from '../layout'
 import { loadSave, resetProgress, writeSave } from '../data/pokeapi'
 import { emptyInventory, defaultMissions, emptyPity, formatPokedollars } from '../data/types'
 import { heroGlowRing } from '../fx'
 import { Theme } from '../theme'
 import { bodyText, fadeIn, goScene, makeButton, titleText } from '../ui'
 
-/**
- * Splash d’accueil HD : brand dominante + héros HOME + CTA.
- */
+/** Splash : brand + CTA + héros. Pas de grosse carte. */
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('title')
@@ -22,80 +19,54 @@ export class TitleScene extends Phaser.Scene {
     fadeIn(this, 0x07090e)
     const heroId = save.team[0]?.id || save.starterId || 6
     const hx = GAME_W * 0.72
-    const hy = GAME_H * 0.54
+    const hy = GAME_H * 0.52
 
     await paintScene(this, BG.title, {
-      dim: 0.26,
+      dim: 0.28,
       heroId,
       heroKind: 'home',
       heroX: hx,
       heroY: hy,
-      heroScale: 0.62,
+      heroScale: 0.52,
     })
-    heroGlowRing(this, hx, hy + 140, Theme.red)
+    heroGlowRing(this, hx, hy + 120, Theme.red)
 
-    // Vignette gauche pour le brand
+    // Vignette douce gauche
     const veil = this.add.graphics().setDepth(12)
-    veil.fillStyle(0x05070c, 0.55)
-    veil.fillRect(0, 0, GAME_W * 0.48, GAME_H)
+    veil.fillStyle(0x05070c, 0.58)
+    veil.fillRect(0, 0, GAME_W * 0.46, GAME_H)
 
-    contentCard(this, 40, 100, 420, 420, { accent: Theme.red, depth: 15 })
-
-    const brand = titleText(this, 64, 150, 'PokeArena', {
-      size: '56px',
+    const brand = titleText(this, 56, 180, 'PokeArena', {
+      size: '40px',
       color: '#ffffff',
       origin: 0,
     })
       .setDepth(20)
-      .setStroke('#e3350d', 6)
+      .setStroke('#e3350d', 4)
       .setAlpha(0)
-    this.tweens.add({
-      targets: brand,
-      alpha: 1,
-      x: 72,
-      duration: 420,
-      ease: 'Cubic.easeOut',
-    })
+    this.tweens.add({ targets: brand, alpha: 1, duration: 360, ease: 'Cubic.easeOut' })
 
-    bodyText(this, 72, 230, 'Gacha · Arène · Évolution', {
-      size: '18px',
-      color: 'rgba(255,255,255,0.88)',
+    bodyText(this, 56, 240, 'Gacha · Arène · Évolution', {
+      size: '14px',
+      color: 'rgba(255,255,255,0.8)',
       origin: 0,
-    }).setDepth(20)
-
-    bodyText(this, 72, 270, 'Invoque, combat, fais évoluer\nton équipe de champions.', {
-      size: '15px',
-      color: 'rgba(255,255,255,0.65)',
-      origin: 0,
-      align: 'left',
     }).setDepth(20)
 
     const hasSave = Boolean(save.starterId && save.team.length)
-    const cta = makeButton(this, 250, 380, hasSave ? 'Continuer' : 'Nouvelle partie', {
+    makeButton(this, 140, 320, hasSave ? 'Continuer' : 'Nouvelle partie', {
       tone: 'red',
-      fontSize: '22px',
-      padX: 32,
-      padY: 14,
+      fontSize: '16px',
+      padX: 24,
+      padY: 11,
       onClick: () => goScene(this, hasSave ? 'hub' : 'onboard', Theme.red),
     }).setDepth(30)
-    cta.setAlpha(0)
-    this.tweens.add({ targets: cta, alpha: 1, delay: 200, duration: 300 })
-    this.tweens.add({
-      targets: cta,
-      scale: 1.04,
-      duration: 900,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: 500,
-    })
 
     if (hasSave) {
-      makeButton(this, 250, 460, 'Recommencer', {
+      makeButton(this, 140, 380, 'Recommencer', {
         tone: 'dark',
-        fontSize: '14px',
-        padX: 16,
-        padY: 10,
+        fontSize: '12px',
+        padX: 14,
+        padY: 8,
         onClick: () => {
           resetProgress()
           writeSave({
@@ -122,10 +93,10 @@ export class TitleScene extends Phaser.Scene {
 
       bodyText(
         this,
-        72,
-        510,
+        56,
+        430,
         `${formatPokedollars(save.coins)} · vague ${save.bestWave} · R${save.unlockedGen}`,
-        { size: '14px', color: 'rgba(255,255,255,0.7)', origin: 0 },
+        { size: '12px', color: 'rgba(255,255,255,0.65)', origin: 0 },
       ).setDepth(20)
     }
 

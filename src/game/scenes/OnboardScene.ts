@@ -6,7 +6,7 @@ import { GAME_W } from '../config'
 import { fetchMany, fetchMon, loadSave, pullStarterTrio, writeSave } from '../data/pokeapi'
 import { STARTER_TRIO } from '../data/types'
 import { summonBurst } from '../fx'
-import { L, contentCard, drawShell, rarityFlash } from '../layout'
+import { L, drawShell, rarityFlash } from '../layout'
 import { Theme } from '../theme'
 import { bodyText, drawPokeBall, ensureTextures, fadeIn, goScene, makeButton, starsLabel, titleText } from '../ui'
 
@@ -32,11 +32,18 @@ export class OnboardScene extends Phaser.Scene {
 
   async showIntro() {
     this.clearUi()
-    await paintScene(this, BG.onboard, { dim: 0.38 })
+    await paintScene(this, BG.onboard, { dim: 0.4 })
     drawShell(this, { title: 'Bienvenue', back: false, showWallet: false, accent: Theme.red })
 
-    const zone = { x: L.pad, y: L.contentY, w: GAME_W - L.pad * 2, h: L.contentH - 8 }
-    contentCard(this, zone.x, zone.y, zone.w, zone.h, { depth: 12, accent: Theme.red })
+    titleText(this, GAME_W / 2, L.contentY + 24, 'Ton premier partenaire', {
+      size: '22px',
+      color: '#ffffff',
+    }).setDepth(20)
+
+    bodyText(this, GAME_W / 2, L.contentY + 56, 'Tirage gratuit parmi le trio de Kanto', {
+      size: '13px',
+      color: 'rgba(255,255,255,0.65)',
+    }).setDepth(20)
 
     const starters = await fetchMany([...STARTER_TRIO], { full: false })
     await ensureTextures(
@@ -46,65 +53,41 @@ export class OnboardScene extends Phaser.Scene {
 
     starters.forEach((m, i) => {
       if (!this.textures.exists(m.homeKey)) return
-      const x = zone.x + zone.w * 0.22 + i * (zone.w * 0.28)
-      const img = this.add
-        .image(x, zone.y + zone.h * 0.44, m.homeKey)
-        .setScale(0.18)
-        .setDepth(15)
-        .setAlpha(0)
-      this.tweens.add({
-        targets: img,
-        alpha: 1,
-        scale: 0.36,
-        duration: 380,
-        delay: 80 + i * 90,
-        ease: 'Back.easeOut',
-      })
-      bodyText(this, x, zone.y + zone.h * 0.72, m.nameFr, {
-        size: '16px',
+      const x = GAME_W * 0.28 + i * (GAME_W * 0.22)
+      const y = L.contentCenterY + 10
+      this.add.image(x, y, m.homeKey).setScale(0.28).setDepth(15)
+      bodyText(this, x, y + 90, m.nameFr, {
+        size: '13px',
         color: '#ffffff',
       }).setDepth(16)
     })
 
-    titleText(this, GAME_W / 2, zone.y + 36, 'Choisis ton partenaire', {
-      size: '28px',
-      color: '#ffffff',
-    }).setDepth(20)
-
-    bodyText(this, GAME_W / 2, zone.y + 72, '1 Ball = 1 tirage · x10 = 3★ · pity 4★ / 50', {
-      size: '14px',
-      color: 'rgba(255,255,255,0.7)',
-    }).setDepth(20)
-
-    makeButton(this, GAME_W / 2, L.dockY, 'Première invocation', {
-      tone: 'red',
-      fontSize: '18px',
-      padX: 28,
-      padY: 12,
+    makeButton(this, GAME_W / 2, L.dockY, 'Invoquer', {
+      tone: 'gold',
+      fontSize: '15px',
+      padX: 24,
+      padY: 10,
       onClick: () => void this.showFirstPull(),
     }).setDepth(102)
   }
 
   async showFirstPull() {
     this.clearUi()
-    await paintScene(this, BG.gacha, { dim: 0.42 })
+    await paintScene(this, BG.gacha, { dim: 0.45 })
     drawShell(this, { title: 'Invocation', back: false, showWallet: false, accent: Theme.gold })
 
-    contentCard(this, GAME_W / 2 - 260, L.contentY + 16, 520, L.contentH - 32, {
-      depth: 12,
-      accent: Theme.gold,
-    })
-
-    this.status = bodyText(this, GAME_W / 2, L.contentCenterY + 100, 'Starter gratuit · trio Kanto', {
-      size: '16px',
-      color: '#ffffff',
+    this.status = bodyText(this, GAME_W / 2, L.contentY + 28, 'Starter gratuit', {
+      size: '14px',
+      color: 'rgba(255,255,255,0.85)',
     }).setDepth(20)
 
-    makeButton(this, GAME_W / 2, L.dockY, 'Invoquer', {
+    this.add.ellipse(GAME_W / 2, L.contentCenterY + 50, 160, 32, 0x000000, 0.3).setDepth(11)
+
+    makeButton(this, GAME_W / 2, L.dockY, 'Ouvrir', {
       tone: 'gold',
-      fontSize: '20px',
-      padX: 36,
-      padY: 12,
+      fontSize: '16px',
+      padX: 28,
+      padY: 10,
       onClick: () => void this.doStarterPull(),
     }).setDepth(102)
   }
@@ -112,19 +95,23 @@ export class OnboardScene extends Phaser.Scene {
   async doStarterPull() {
     if (this.busy) return
     this.busy = true
-    this.status.setText('Ouverture…')
+    this.status.setText('…')
 
     const cx = GAME_W / 2
-    const cy = L.contentCenterY - 20
-    const ball = drawPokeBall(this, cx, cy, 48).setDepth(25)
-    this.tweens.add({
-      targets: ball,
-      x: cx + 12,
-      duration: 55,
-      yoyo: true,
-      repeat: 8,
-    })
-    await new Promise<void>((r) => this.time.delayedCall(480, () => r()))
+    const cy = L.contentCenterY - 10
+    const ball = drawPokeBall(this, cx, cy, 36).setDepth(25)
+
+    for (let s = 0; s < 4; s++) {
+      this.tweens.add({
+        targets: ball,
+        angle: s % 2 === 0 ? 12 : -12,
+        duration: 80,
+        yoyo: true,
+        repeat: 1,
+      })
+      await new Promise<void>((r) => this.time.delayedCall(400, () => r()))
+    }
+
     ball.destroy()
     rarityFlash(this, 1)
 
@@ -133,18 +120,18 @@ export class OnboardScene extends Phaser.Scene {
     const mon = await fetchMon(res.id, { full: true })
     await ensureTextures(this, [{ key: mon.homeKey, url: mon.homeUrl }])
 
-    summonBurst(this, cx, cy, Theme.red, 18)
+    summonBurst(this, cx, cy, Theme.red, 14)
     this.preview?.destroy()
     this.preview = this.add
       .image(cx, cy, mon.homeKey)
-      .setScale(0.08)
+      .setScale(0.06)
       .setDepth(26)
       .setAlpha(0)
     this.tweens.add({
       targets: this.preview,
       alpha: 1,
-      scale: 0.5,
-      duration: 420,
+      scale: 0.36,
+      duration: 360,
       ease: 'Back.easeOut',
     })
     playCry(mon.cryUrl, 0.5)
@@ -152,9 +139,9 @@ export class OnboardScene extends Phaser.Scene {
 
     makeButton(this, GAME_W / 2, L.dockY, 'Entrer au Centre', {
       tone: 'red',
-      fontSize: '18px',
-      padX: 24,
-      padY: 12,
+      fontSize: '14px',
+      padX: 20,
+      padY: 9,
       onClick: () => goScene(this, 'hub', 0x07090e),
     }).setDepth(102)
     this.busy = false

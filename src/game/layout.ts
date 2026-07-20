@@ -5,14 +5,14 @@ import { formatPokedollars } from './data/types'
 import { FONT_TITLE, FONT_UI, Theme } from './theme'
 import { goScene, hexCss, makeButton } from './ui'
 
-/** Grille HD 1280×720 — chrome commun à tous les écrans meta */
+/** Grille HD — chrome léger, pas de gros blocs */
 export const L = {
-  topH: 64,
-  dockH: 72,
-  pad: 28,
-  contentY: 78,
+  topH: 52,
+  dockH: 64,
+  pad: 24,
+  contentY: 64,
   get contentH() {
-    return GAME_H - this.topH - this.dockH - 12
+    return GAME_H - this.topH - this.dockH - 8
   },
   get dockY() {
     return GAME_H - this.dockH / 2
@@ -29,57 +29,50 @@ export type ShellOpts = {
   accent?: number
 }
 
-/**
- * Chrome commun : barre top + dock bas + bandeau accent.
- * Retourne la zone contenu utile.
- */
 export function drawShell(scene: Phaser.Scene, opts: ShellOpts) {
   const save = loadSave()
   const showWallet = opts.showWallet !== false
   const accent = opts.accent ?? Theme.red
 
   const top = scene.add.graphics().setDepth(100)
-  top.fillStyle(0x05070c, 0.82)
+  top.fillStyle(0x05070c, 0.72)
   top.fillRect(0, 0, GAME_W, L.topH)
   top.fillStyle(accent, 1)
-  top.fillRect(0, L.topH - 3, GAME_W, 3)
-  top.lineStyle(1, 0xffffff, 0.08)
-  top.lineBetween(0, L.topH, GAME_W, L.topH)
+  top.fillRect(0, L.topH - 2, GAME_W, 2)
 
-  const title = scene.add
+  scene.add
     .text(L.pad, L.topH / 2, opts.title, {
       fontFamily: FONT_TITLE,
-      fontSize: '26px',
+      fontSize: '18px',
       color: '#ffffff',
     })
     .setOrigin(0, 0.5)
     .setDepth(101)
-  title.setAlpha(0)
-  scene.tweens.add({ targets: title, alpha: 1, x: L.pad + 4, duration: 280, ease: 'Cubic.easeOut' })
 
   if (showWallet) {
-    drawWalletChips(scene, GAME_W - L.pad - (opts.back ? 118 : 0), L.topH / 2, {
-      coins: save.coins,
-      balls: save.inventory.pokeball,
-      candy: save.inventory.rareCandy,
-      gen: save.unlockedGen,
-    })
+    const wallet = `${formatPokedollars(save.coins)} · ${save.inventory.pokeball} Ball · ${save.inventory.rareCandy} SB · R${save.unlockedGen}`
+    scene.add
+      .text(GAME_W - L.pad - (opts.back ? 100 : 0), L.topH / 2, wallet, {
+        fontFamily: FONT_UI,
+        fontSize: '12px',
+        color: 'rgba(255,255,255,0.82)',
+      })
+      .setOrigin(1, 0.5)
+      .setDepth(101)
   }
 
   const dock = scene.add.graphics().setDepth(100)
-  dock.fillStyle(0x05070c, 0.86)
+  dock.fillStyle(0x05070c, 0.78)
   dock.fillRect(0, GAME_H - L.dockH, GAME_W, L.dockH)
-  dock.fillStyle(accent, 0.85)
-  dock.fillRect(0, GAME_H - L.dockH, GAME_W, 3)
-  dock.lineStyle(1, 0xffffff, 0.08)
-  dock.lineBetween(0, GAME_H - L.dockH, GAME_W, GAME_H - L.dockH)
+  dock.fillStyle(accent, 0.9)
+  dock.fillRect(0, GAME_H - L.dockH, GAME_W, 2)
 
   if (opts.back) {
-    makeButton(scene, 86, L.dockY, 'Retour', {
+    makeButton(scene, 72, L.dockY, 'Retour', {
       tone: 'red',
-      fontSize: '15px',
-      padX: 18,
-      padY: 10,
+      fontSize: '13px',
+      padX: 14,
+      padY: 8,
       onClick: () => goScene(scene, 'hub'),
     }).setDepth(102)
   }
@@ -94,41 +87,7 @@ export function drawShell(scene: Phaser.Scene, opts: ShellOpts) {
   }
 }
 
-function drawWalletChips(
-  scene: Phaser.Scene,
-  rightX: number,
-  y: number,
-  data: { coins: number; balls: number; candy: number; gen: number },
-) {
-  const parts = [
-    { label: formatPokedollars(data.coins), color: Theme.gold },
-    { label: `${data.balls} Ball`, color: Theme.red },
-    { label: `${data.candy} SB`, color: Theme.blue },
-    { label: `R${data.gen}`, color: 0x88aacc },
-  ]
-  let x = rightX
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i]
-    const t = scene.add
-      .text(0, 0, p.label, {
-        fontFamily: FONT_UI,
-        fontSize: '13px',
-        color: '#ffffff',
-      })
-      .setOrigin(0.5)
-    const w = t.width + 22
-    const h = 28
-    const g = scene.add.graphics().setDepth(101)
-    g.fillStyle(0x000000, 0.45)
-    g.fillRoundedRect(x - w, y - h / 2, w, h, 8)
-    g.lineStyle(1.5, p.color, 0.9)
-    g.strokeRoundedRect(x - w, y - h / 2, w, h, 8)
-    t.setPosition(x - w / 2, y).setDepth(102)
-    x -= w + 8
-  }
-}
-
-/** Carte contenu semi-transparente */
+/** Panneau discret (usage rare) */
 export function contentCard(
   scene: Phaser.Scene,
   x: number,
@@ -138,22 +97,17 @@ export function contentCard(
   opts?: { accent?: number; depth?: number; enter?: boolean },
 ) {
   const g = scene.add.graphics().setDepth(opts?.depth ?? 12)
-  g.fillStyle(0x080a10, 0.78)
-  g.fillRoundedRect(x, y, w, h, 16)
-  g.lineStyle(2, opts?.accent ?? 0xffffff, 0.2)
-  g.strokeRoundedRect(x, y, w, h, 16)
+  g.fillStyle(0x080a10, 0.55)
+  g.fillRoundedRect(x, y, w, h, 10)
+  g.lineStyle(1, opts?.accent ?? 0xffffff, 0.16)
+  g.strokeRoundedRect(x, y, w, h, 10)
   if (opts?.accent) {
     g.fillStyle(opts.accent, 1)
-    g.fillRect(x + 2, y + 14, 4, h - 28)
-  }
-  if (opts?.enter !== false) {
-    g.setAlpha(0)
-    scene.tweens.add({ targets: g, alpha: 1, duration: 220, ease: 'Cubic.easeOut' })
+    g.fillRect(x, y + 10, 3, h - 20)
   }
   return g
 }
 
-/** Ligne de liste cliquable */
 export function listRow(
   scene: Phaser.Scene,
   x: number,
@@ -173,15 +127,13 @@ export function listRow(
   const accent = opts.accent ?? Theme.blue
   const delay = opts.delay ?? 0
 
-  const bg = scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0.4).setDepth(depth)
-  bg.setStrokeStyle(2, accent, 0.9)
-
-  const bar = scene.add.rectangle(x + 3, y + h / 2, 4, h - 10, accent, 1).setDepth(depth + 1)
+  const bg = scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0.32).setDepth(depth)
+  bg.setStrokeStyle(1.5, accent, 0.75)
 
   const title = scene.add
-    .text(x + 20, y + h / 2 - (opts.sub ? 10 : 0), opts.title, {
+    .text(x + 16, y + h / 2 - (opts.sub ? 8 : 0), opts.title, {
       fontFamily: FONT_TITLE,
-      fontSize: '18px',
+      fontSize: '15px',
       color: '#ffffff',
     })
     .setOrigin(0, 0.5)
@@ -190,39 +142,23 @@ export function listRow(
   let sub: Phaser.GameObjects.Text | undefined
   if (opts.sub) {
     sub = scene.add
-      .text(x + 20, y + h / 2 + 14, opts.sub, {
+      .text(x + 16, y + h / 2 + 12, opts.sub, {
         fontFamily: FONT_UI,
-        fontSize: '12px',
-        color: 'rgba(255,255,255,0.62)',
+        fontSize: '11px',
+        color: 'rgba(255,255,255,0.58)',
       })
       .setOrigin(0, 0.5)
       .setDepth(depth + 1)
   }
 
-  const targets = [bg, bar, title, ...(sub ? [sub] : [])]
-  targets.forEach((t) => {
-    t.setAlpha(0)
-    t.setX((t as Phaser.GameObjects.Components.Transform).x + 12)
-  })
-  scene.tweens.add({
-    targets,
-    alpha: 1,
-    x: '-=12',
-    duration: 280,
-    delay,
-    ease: 'Cubic.easeOut',
-  })
+  const targets = [bg, title, ...(sub ? [sub] : [])]
+  targets.forEach((t) => t.setAlpha(0))
+  scene.tweens.add({ targets, alpha: 1, duration: 200, delay, ease: 'Cubic.easeOut' })
 
   if (opts.onClick) {
     bg.setInteractive({ useHandCursor: true })
-    bg.on('pointerover', () => {
-      bg.setFillStyle(0xffffff, 0.1)
-      scene.tweens.add({ targets: bg, scaleX: 1.01, duration: 80 })
-    })
-    bg.on('pointerout', () => {
-      bg.setFillStyle(0x000000, 0.4)
-      scene.tweens.add({ targets: bg, scaleX: 1, duration: 80 })
-    })
+    bg.on('pointerover', () => bg.setFillStyle(0xffffff, 0.08))
+    bg.on('pointerout', () => bg.setFillStyle(0x000000, 0.32))
     bg.on('pointerdown', opts.onClick)
   }
   return bg
@@ -232,13 +168,12 @@ export function sectionTitle(scene: Phaser.Scene, x: number, y: number, label: s
   return scene.add
     .text(x, y, label, {
       fontFamily: FONT_TITLE,
-      fontSize: '15px',
+      fontSize: '13px',
       color: hexCss(Theme.gold),
     })
     .setDepth(20)
 }
 
-/** Flash de rareté pour invoc */
 export function rarityFlash(scene: Phaser.Scene, stars: number) {
   const colors: Record<number, number> = {
     1: 0xffffff,
@@ -248,16 +183,16 @@ export function rarityFlash(scene: Phaser.Scene, stars: number) {
   }
   const c = colors[stars] ?? 0xffffff
   const fx = scene.add
-    .rectangle(0, 0, GAME_W, GAME_H, c, stars >= 4 ? 0.55 : stars >= 3 ? 0.38 : 0.22)
+    .rectangle(0, 0, GAME_W, GAME_H, c, stars >= 4 ? 0.5 : stars >= 3 ? 0.32 : 0.18)
     .setOrigin(0)
     .setDepth(4000)
   scene.tweens.add({
     targets: fx,
     alpha: 0,
-    duration: stars >= 4 ? 420 : 220,
+    duration: stars >= 4 ? 480 : 240,
     onComplete: () => fx.destroy(),
   })
   if (stars >= 3) {
-    scene.cameras.main.shake(stars >= 4 ? 90 : 40, stars >= 4 ? 0.012 : 0.005)
+    scene.cameras.main.shake(stars >= 4 ? 100 : 45, stars >= 4 ? 0.01 : 0.004)
   }
 }

@@ -5,7 +5,7 @@ import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { fetchMon, fetchMany, loadSave } from '../data/pokeapi'
 import { GEN_MAX_ID, TYPE_COLORS, TYPE_FR, type MonSummary } from '../data/types'
-import { L, contentCard, drawShell, sectionTitle } from '../layout'
+import { L, drawShell, sectionTitle } from '../layout'
 import { Theme } from '../theme'
 import { bodyText, ensureTextures, fadeIn, makeButton, typeBadge } from '../ui'
 
@@ -33,26 +33,21 @@ export class PokedexScene extends Phaser.Scene {
     const zone = drawShell(this, { title: 'Pokédex', back: true, accent: Theme.red })
     this.listW = 720
     this.detailX = zone.x + this.listW + 16
-    contentCard(this, zone.x, zone.y, this.listW, zone.h - 4, { depth: 12, accent: Theme.red })
-    contentCard(this, this.detailX, zone.y, zone.w - this.listW - 16, zone.h - 4, {
-      depth: 12,
-      accent: Theme.red,
-    })
 
     sectionTitle(
       this,
-      zone.x + 18,
-      zone.y + 14,
+      zone.x,
+      zone.y + 4,
       `Vus ${save.seen.length} · Capturés ${save.roster.length}`,
     )
 
     this.detail = this.add
-      .text(this.detailX + 20, zone.y + 240, 'Sélectionne une entrée', {
+      .text(this.detailX + 12, zone.y + 220, 'Sélectionne une entrée', {
         fontFamily: '"Nunito", system-ui, sans-serif',
-        fontSize: '14px',
+        fontSize: '13px',
         color: '#ffffff',
-        wordWrap: { width: zone.w - this.listW - 56 },
-        lineSpacing: 5,
+        wordWrap: { width: zone.w - this.listW - 40 },
+        lineSpacing: 4,
       })
       .setDepth(20)
 

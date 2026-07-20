@@ -3,7 +3,7 @@ import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { applyTrain, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { effectiveLevel, type OwnedMon } from '../data/types'
-import { contentCard, drawShell, sectionTitle } from '../layout'
+import { drawShell, sectionTitle } from '../layout'
 import { Theme } from '../theme'
 import {
   bodyText,
@@ -25,12 +25,11 @@ export class TrainScene extends Phaser.Scene {
     await paintScene(this, BG.train, { dim: 0.45 })
     await ensureItemIcons(this, ['rareCandy'])
     const zone = drawShell(this, { title: 'Dojo', back: true, accent: Theme.gold })
-    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12, accent: Theme.gold })
 
     const save = loadSave()
-    sectionTitle(this, zone.x + 16, zone.y + 14, `${save.inventory.rareCandy} Super Bonbon`)
+    sectionTitle(this, zone.x, zone.y + 4, `${save.inventory.rareCandy} Super Bonbon`)
     if (this.textures.exists(itemTextureKey('rareCandy'))) {
-      this.add.image(zone.x + 200, zone.y + 22, itemTextureKey('rareCandy')).setScale(1.4).setDepth(20)
+      this.add.image(zone.x + 180, zone.y + 12, itemTextureKey('rareCandy')).setScale(1.2).setDepth(20)
     }
 
     const pool: { where: 'team' | 'box'; index: number; mon: OwnedMon }[] = [

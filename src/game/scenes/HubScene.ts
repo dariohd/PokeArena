@@ -4,22 +4,25 @@ import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { claimMission, fetchMon, loadSave, writeSave } from '../data/pokeapi'
-import { MISSION_DEFS, unlockedBanners } from '../data/types'
+import { GACHA_PITY, MISSION_DEFS, unlockedBanners } from '../data/types'
 import { heroGlowRing } from '../fx'
-import { L, contentCard, drawShell, listRow, sectionTitle } from '../layout'
+import { L, drawShell } from '../layout'
 import { Theme } from '../theme'
 import { bodyText, ensureTextures, fadeIn, goScene, makeButton, starsLabel } from '../ui'
 
-const NAV = [
-  { title: 'Arène', sub: 'Combats & loot', accent: Theme.red, scene: 'arena' },
-  { title: 'Bannières', sub: 'x1 / x10 · pity 50', accent: Theme.gold, scene: 'gacha' },
-  { title: 'Dojo', sub: 'Super Bonbons', accent: Theme.grassDark, scene: 'train' },
-  { title: 'Équipe', sub: 'Roster & PC', accent: Theme.blue, scene: 'team' },
-  { title: 'Poké Mart', sub: 'Balls & soins', accent: 0xe09030, scene: 'shop' },
-  { title: 'Pokédex', sub: 'Espèces vues', accent: 0x48c8e0, scene: 'pokedex' },
+const DOCK_NAV = [
+  { label: 'Arène', scene: 'arena', tone: 'red' as const },
+  { label: 'Bannières', scene: 'gacha', tone: 'gold' as const },
+  { label: 'Dojo', scene: 'train', tone: 'green' as const },
+  { label: 'Équipe', scene: 'team', tone: 'blue' as const },
+  { label: 'Mart', scene: 'shop', tone: 'dark' as const },
+  { label: 'Dex', scene: 'pokedex', tone: 'dark' as const },
 ]
 
-/** Home gacha : héros + nav + équipe + quête */
+/**
+ * Home : une composition.
+ * Héros + bannière (pity + CTA) · nav secondaire au dock.
+ */
 export class HubScene extends Phaser.Scene {
   constructor() {
     super('hub')
@@ -29,69 +32,85 @@ export class HubScene extends Phaser.Scene {
     fadeIn(this, 0x07090e)
     const save = loadSave()
     const heroId = save.team[0]?.id || save.starterId || 25
-    const hx = GAME_W * 0.68
-    const hy = L.contentCenterY + 20
+    const hx = GAME_W * 0.7
+    const hy = L.contentCenterY + 8
 
     await paintScene(this, BG.hub, {
-      dim: 0.32,
+      dim: 0.34,
       heroId,
       heroKind: 'home',
       heroX: hx,
       heroY: hy,
-      heroScale: 0.58,
+      heroScale: 0.5,
     })
-    heroGlowRing(this, hx, hy + 120, Theme.gold)
+    heroGlowRing(this, hx, hy + 110, Theme.gold)
 
-    drawShell(this, { title: 'Centre Pokémon', back: false, showWallet: true, accent: Theme.red })
+    drawShell(this, { title: 'Centre', back: false, showWallet: true, accent: Theme.red })
 
-    // Nav gauche
-    const navW = 320
-    contentCard(this, L.pad, L.contentY, navW, L.contentH - 8, { depth: 12, accent: Theme.red })
-    sectionTitle(this, L.pad + 18, L.contentY + 16, 'Destination')
-
-    NAV.forEach((n, i) => {
-      listRow(this, L.pad + 14, L.contentY + 46 + i * 72, navW - 28, 62, {
-        title: n.title,
-        sub: n.sub,
-        accent: n.accent,
-        onClick: () => goScene(this, n.scene, n.accent),
-        depth: 14,
-        delay: 40 + i * 45,
-      })
-    })
-
-    // Bandeau équipe sous le héros
-    await this.drawTeamStrip(save.team.slice(0, 6))
-
-    // Bannière featured
     const banners = unlockedBanners(save.unlockedGen)
     const featured = banners[banners.length - 1]
-    if (featured) {
-      const pity = save.gachaPityByBanner[featured.id] ?? 0
-      const bx = GAME_W - L.pad - 340
-      const by = L.contentY + 12
-      contentCard(this, bx, by, 340, 120, { accent: featured.color, depth: 12 })
-      sectionTitle(this, bx + 16, by + 14, 'Bannière active')
-      bodyText(this, bx + 16, by + 44, featured.nameFr, {
-        size: '18px',
-        color: '#ffffff',
-        origin: 0,
-      }).setDepth(20)
-      bodyText(this, bx + 16, by + 72, `${featured.gamesFr} · Pity ${pity}/50`, {
-        size: '12px',
-        color: 'rgba(255,255,255,0.65)',
-        origin: 0,
-      }).setDepth(20)
-      makeButton(this, bx + 250, by + 88, 'Invoquer', {
-        tone: 'gold',
-        fontSize: '13px',
-        padX: 12,
-        padY: 6,
-        onClick: () => goScene(this, 'gacha', Theme.gold),
-      }).setDepth(22)
-    }
+    const pity = featured ? (save.gachaPityByBanner[featured.id] ?? 0) : 0
 
-    // Quête
+    // Colonne gauche : info bannière (pas de grosse carte)
+    const lx = L.pad + 8
+    const ly = L.contentY + 36
+
+    bodyText(this, lx, ly, 'Bannière', {
+      size: '12px',
+      color: 'rgba(232,185,35,0.95)',
+      origin: 0,
+    }).setDepth(20)
+
+    bodyText(this, lx, ly + 28, featured?.nameFr ?? 'Kanto', {
+      size: '28px',
+      color: '#ffffff',
+      origin: 0,
+    }).setDepth(20)
+
+    bodyText(this, lx, ly + 68, featured?.gamesFr ?? '', {
+      size: '13px',
+      color: 'rgba(255,255,255,0.65)',
+      origin: 0,
+    }).setDepth(20)
+
+    bodyText(this, lx, ly + 100, `Pity 4★  ${pity} / ${GACHA_PITY}`, {
+      size: '14px',
+      color: 'rgba(255,255,255,0.88)',
+      origin: 0,
+    }).setDepth(20)
+
+    // Barre pity
+    const barW = 220
+    const barBg = this.add.rectangle(lx + barW / 2, ly + 128, barW, 6, 0x000000, 0.45).setDepth(19)
+    this.add
+      .rectangle(lx, ly + 128, Math.max(4, (barW * pity) / GACHA_PITY), 6, Theme.gold, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(20)
+    void barBg
+
+    makeButton(this, lx + 90, ly + 180, 'Invoquer', {
+      tone: 'gold',
+      fontSize: '16px',
+      padX: 28,
+      padY: 10,
+      onClick: () => {
+        if (featured) this.scene.start('gacha', { bannerId: featured.id })
+        else goScene(this, 'gacha', Theme.gold)
+      },
+    }).setDepth(22)
+
+    makeButton(this, lx + 90, ly + 230, 'Combattre', {
+      tone: 'red',
+      fontSize: '14px',
+      padX: 22,
+      padY: 8,
+      onClick: () => goScene(this, 'arena', Theme.red),
+    }).setDepth(22)
+
+    // Équipe : miniatures discrètes
+    await this.drawTeamQuiet(save.team.slice(0, 5), lx, ly + 290)
+
+    // Quête : une ligne, pas une carte
     const m =
       save.missions.find((x) => {
         const d = MISSION_DEFS.find((dd) => dd.id === x.id)
@@ -99,27 +118,19 @@ export class HubScene extends Phaser.Scene {
       }) ?? save.missions[0]
     const def = m ? MISSION_DEFS.find((d) => d.id === m.id) : null
     if (m && def) {
-      const qx = GAME_W - L.pad - 340
-      const qy = L.contentY + L.contentH - 118
-      contentCard(this, qx, qy, 340, 110, { accent: Theme.gold, depth: 12 })
-      sectionTitle(this, qx + 16, qy + 14, 'Quête du jour')
-      bodyText(this, qx + 16, qy + 42, def.title, {
-        size: '13px',
-        color: '#ffffff',
-        origin: 0,
-        wrap: 300,
-      }).setDepth(20)
-      bodyText(this, qx + 16, qy + 74, `${m.progress} / ${m.target}`, {
-        size: '13px',
+      const qx = GAME_W - L.pad
+      const claimable = m.progress >= m.target && !m.claimed
+      bodyText(this, qx, L.contentY + 20, `Quête · ${def.title}  ${m.progress}/${m.target}`, {
+        size: '12px',
         color: 'rgba(255,255,255,0.7)',
-        origin: 0,
+        origin: 1,
       }).setDepth(20)
-      if (m.progress >= m.target && !m.claimed) {
-        makeButton(this, qx + 270, qy + 78, 'OK', {
+      if (claimable) {
+        makeButton(this, qx - 36, L.contentY + 48, 'OK', {
           tone: 'gold',
-          fontSize: '12px',
-          padX: 12,
-          padY: 6,
+          fontSize: '11px',
+          padX: 10,
+          padY: 4,
           onClick: () => {
             const next = claimMission(loadSave(), m.id)
             if (!next) return
@@ -130,12 +141,23 @@ export class HubScene extends Phaser.Scene {
       }
     }
 
-    // Dock
-    makeButton(this, 100, L.dockY, save.autoMode ? 'Auto ON' : 'Auto OFF', {
+    // Dock : nav secondaire compacte + options
+    const navX = [64, 148, 240, 330, 412, 488]
+    DOCK_NAV.forEach((n, i) => {
+      makeButton(this, navX[i], L.dockY, n.label, {
+        tone: n.tone,
+        fontSize: '12px',
+        padX: 10,
+        padY: 7,
+        onClick: () => goScene(this, n.scene),
+      }).setDepth(102)
+    })
+
+    makeButton(this, GAME_W - 210, L.dockY, save.autoMode ? 'Auto' : 'Manu', {
       tone: save.autoMode ? 'green' : 'dark',
-      fontSize: '14px',
-      padX: 14,
-      padY: 10,
+      fontSize: '12px',
+      padX: 10,
+      padY: 7,
       onClick: () => {
         const s = loadSave()
         s.autoMode = !s.autoMode
@@ -144,35 +166,37 @@ export class HubScene extends Phaser.Scene {
       },
     }).setDepth(102)
 
-    makeButton(this, 230, L.dockY, save.mute ? 'Son OFF' : 'Son ON', {
+    makeButton(this, GAME_W - 130, L.dockY, 'Son', {
       tone: 'dark',
-      fontSize: '14px',
-      padX: 14,
-      padY: 10,
+      fontSize: '12px',
+      padX: 10,
+      padY: 7,
       onClick: () => {
         toggleMute()
         this.scene.restart()
       },
     }).setDepth(102)
 
-    makeButton(this, 350, L.dockY, 'Menu', {
+    makeButton(this, GAME_W - 52, L.dockY, 'Menu', {
       tone: 'red',
-      fontSize: '14px',
-      padX: 14,
-      padY: 10,
+      fontSize: '12px',
+      padX: 10,
+      padY: 7,
       onClick: () => goScene(this, 'title'),
     }).setDepth(102)
   }
 
-  async drawTeamStrip(
+  async drawTeamQuiet(
     team: { id: number; level: number; stars: number; shiny?: boolean }[],
+    x: number,
+    y: number,
   ) {
     if (!team.length) return
-    const stripY = L.contentY + L.contentH - 100
-    const stripX = L.pad + 340
-    const stripW = 360
-    contentCard(this, stripX, stripY, stripW, 92, { depth: 12 })
-    sectionTitle(this, stripX + 14, stripY + 10, 'Équipe')
+    bodyText(this, x, y, 'Équipe', {
+      size: '11px',
+      color: 'rgba(255,255,255,0.5)',
+      origin: 0,
+    }).setDepth(20)
 
     const mons = await Promise.all(team.map((t) => fetchMon(t.id, { full: false })))
     await ensureTextures(
@@ -182,23 +206,14 @@ export class HubScene extends Phaser.Scene {
 
     mons.forEach((m, i) => {
       if (!this.textures.exists(m.homeKey)) return
-      const x = stripX + 48 + i * 56
       const img = this.add
-        .image(x, stripY + 58, m.homeKey)
-        .setScale(0.12)
+        .image(x + 28 + i * 48, y + 36, m.homeKey)
+        .setScale(0.11)
         .setDepth(16)
-        .setAlpha(0)
+        .setAlpha(0.95)
       if (team[i].shiny) img.setTint(0xfff1a8)
-      this.tweens.add({
-        targets: img,
-        alpha: 1,
-        scale: 0.16,
-        duration: 280,
-        delay: 80 + i * 50,
-        ease: 'Back.easeOut',
-      })
-      bodyText(this, x, stripY + 82, starsLabel(team[i].stars), {
-        size: '10px',
+      bodyText(this, x + 28 + i * 48, y + 58, starsLabel(team[i].stars), {
+        size: '9px',
         color: '#e8b923',
       }).setDepth(17)
     })
