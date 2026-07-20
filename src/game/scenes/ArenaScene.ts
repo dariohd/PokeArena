@@ -24,7 +24,8 @@ import {
   type MonSummary,
 } from '../data/types'
 import { Fighter } from '../entities/Fighter'
-import { ARENA_FAR_Y, ARENA_NEAR_Y, drawPerspectiveArena } from '../fx'
+import { BG_FILES, randomArenaBg } from '../assets'
+import { ARENA_FAR_Y, ARENA_NEAR_Y } from '../fx'
 
 export class ArenaScene extends Phaser.Scene {
   private player!: Fighter
@@ -343,7 +344,29 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   drawArena() {
-    drawPerspectiveArena(this)
+    const key = randomArenaBg()
+    const url = BG_FILES[key]
+    // sync load if missing (boot usually preloaded)
+    if (!this.textures.exists(key) && url) {
+      this.load.image(key, url)
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => this.placeArenaBg(key))
+      this.load.start()
+    } else {
+      this.placeArenaBg(key)
+    }
+  }
+
+  placeArenaBg(key: string) {
+    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x1a2830).setOrigin(0).setDepth(0)
+    if (this.textures.exists(key)) {
+      const img = this.add.image(GAME_W / 2, GAME_H / 2, key).setDepth(1)
+      const src = this.textures.get(key).getSourceImage() as HTMLImageElement
+      const cover = Math.max(GAME_W / (src.width || 700), GAME_H / (src.height || 500))
+      img.setScale(cover)
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR)
+    }
+    // Voile bas pour HUD
+    this.add.rectangle(GAME_W / 2, GAME_H - 48, GAME_W, 96, 0x000000, 0.35).setDepth(5)
   }
 
   async ensureMon(id: number, levelHint = 40, full = false): Promise<MonSummary> {

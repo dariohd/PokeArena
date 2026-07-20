@@ -1,72 +1,100 @@
 import Phaser from 'phaser'
+import { BG_FILES } from './assets'
 import { GAME_H, GAME_W } from './config'
 import { fetchMon } from './data/pokeapi'
 import type { MonSummary } from './data/types'
 import { ensureTextures } from './ui'
 
+/** Précharge tous les fonds Showdown locaux */
+export async function preloadBackgrounds(scene: Phaser.Scene): Promise<void> {
+  let queued = false
+  for (const [key, url] of Object.entries(BG_FILES)) {
+    if (!scene.textures.exists(key)) {
+      scene.load.image(key, url)
+      queued = true
+    }
+  }
+  if (!queued) return
+  await new Promise<void>((resolve) => {
+    scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
+    scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
+    scene.load.start()
+  })
+  for (const key of Object.keys(BG_FILES)) {
+    if (scene.textures.exists(key)) {
+      scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR)
+    }
+  }
+}
+
 /**
- * Fond = vrai artwork PokéAPI (official-artwork), pas de décor généré.
- * Base plate + image cover + overlay sombre pour lisibilité UI.
+ * Fond réel (Showdown) en cover + overlay.
+ * Optionnel : artwork / home mon en héros.
  */
-export async function paintArtBackdrop(
+export async function paintScene(
   scene: Phaser.Scene,
-  monId: number,
+  bgKey: string,
   opts?: {
-    /** Opacité de l’overlay sombre (0–1). Défaut 0.48 */
     dim?: number
-    /** Multiplicateur de couverture. Défaut 1.2 */
-    zoom?: number
-    /** Teinte légère de l’art */
-    tint?: number
+    heroId?: number
+    heroX?: number
+    heroY?: number
+    heroScale?: number
+    /** 'home' | 'art' — défaut home (HQ 512) */
+    heroKind?: 'home' | 'art'
   },
 ): Promise<MonSummary | null> {
+  if (!scene.textures.exists(bgKey) && BG_FILES[bgKey]) {
+    await ensureTextures(scene, [{ key: bgKey, url: BG_FILES[bgKey] }])
+  }
+
   scene.add.rectangle(0, 0, GAME_W, GAME_H, 0x0b0d12).setOrigin(0).setDepth(0)
 
+  if (scene.textures.exists(bgKey)) {
+    const img = scene.add.image(GAME_W / 2, GAME_H / 2, bgKey).setDepth(1)
+    const src = scene.textures.get(bgKey).getSourceImage() as HTMLImageElement
+    const tw = src.width || 700
+    const th = src.height || 500
+    const cover = Math.max(GAME_W / tw, GAME_H / th)
+    img.setScale(cover)
+  }
+
+  scene.add
+    .rectangle(0, 0, GAME_W, GAME_H, 0x05070c, opts?.dim ?? 0.35)
+    .setOrigin(0)
+    .setDepth(2)
+
+  if (!opts?.heroId) return null
+
   try {
-    const mon = await fetchMon(monId, { full: false })
-    await ensureTextures(scene, [{ key: mon.spriteKey, url: mon.spriteUrl }])
-    if (!scene.textures.exists(mon.spriteKey)) return mon
-
-    const src = scene.textures.get(mon.spriteKey).getSourceImage() as HTMLImageElement
-    const tw = src.width || 475
-    const th = src.height || 475
-    const zoom = opts?.zoom ?? 1.2
-    const cover = Math.max(GAME_W / tw, GAME_H / th) * zoom
-
-    const art = scene.add
-      .image(GAME_W / 2, GAME_H / 2, mon.spriteKey)
-      .setScale(cover)
-      .setAlpha(0.7)
-      .setDepth(1)
-    if (opts?.tint != null) art.setTint(opts.tint)
-
-    scene.add
-      .rectangle(0, 0, GAME_W, GAME_H, 0x080a10, opts?.dim ?? 0.48)
-      .setOrigin(0)
-      .setDepth(2)
-
+    const mon = await fetchMon(opts.heroId, { full: false })
+    const kind = opts.heroKind ?? 'home'
+    const key = kind === 'art' ? mon.spriteKey : mon.homeKey
+    const url = kind === 'art' ? mon.spriteUrl : mon.homeUrl
+    await ensureTextures(scene, [{ key, url }])
+    if (scene.textures.exists(key)) {
+      const hx = opts.heroX ?? GAME_W * 0.68
+      const hy = opts.heroY ?? GAME_H * 0.55
+      const scale = opts.heroScale ?? (kind === 'art' ? 0.5 : 0.42)
+      const hero = scene.add.image(hx, hy, key).setScale(scale * 0.9).setDepth(10).setAlpha(0)
+      scene.tweens.add({
+        targets: hero,
+        alpha: 1,
+        scale,
+        duration: 450,
+        ease: 'Cubic.easeOut',
+      })
+      scene.tweens.add({
+        targets: hero,
+        y: hy - 8,
+        duration: 2800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      })
+    }
     return mon
   } catch {
     return null
   }
-}
-
-/** Héros net au premier plan (même mon ou autre) */
-export function placeHeroArt(
-  scene: Phaser.Scene,
-  key: string,
-  x: number,
-  y: number,
-  scale = 0.55,
-): Phaser.GameObjects.Image | undefined {
-  if (!scene.textures.exists(key)) return undefined
-  const hero = scene.add.image(x, y, key).setScale(scale * 0.92).setDepth(10).setAlpha(0)
-  scene.tweens.add({
-    targets: hero,
-    alpha: 1,
-    scale,
-    duration: 400,
-    ease: 'Cubic.easeOut',
-  })
-  return hero
 }

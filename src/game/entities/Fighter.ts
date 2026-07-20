@@ -50,23 +50,23 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this)
 
     const body = this.body as Phaser.Physics.Arcade.Body
-    body.setCircle(22, 4, 12)
+    body.setCircle(28, 8, 20)
     body.setCollideWorldBounds(true)
     body.setDrag(1000, 1000)
     body.setMaxVelocity(this.moveSpeed, this.moveSpeed)
 
-    this.baseScale = 2.05 * (opts?.scaleMul ?? 1)
+    this.baseScale = 0.4 * (opts?.scaleMul ?? 1)
     this.setScale(depthScale(y, this.baseScale))
     this.setDepth(y)
     if (shiny) this.setTint(0xfff1a8)
 
     const s = depthScale(y, 1)
     this.shadow = scene.add
-      .ellipse(x, y + 22 * s, 48 * s, 16 * s, Theme.shadow, 0.32)
+      .ellipse(x, y + 28 * s, 56 * s, 18 * s, Theme.shadow, 0.35)
       .setDepth(y - 1)
 
     this.label = scene.add
-      .text(x, y - 52 * s, `N.${this.level} ${mon.nameFr}`, {
+      .text(x, y - 58 * s, `N.${this.level} ${mon.nameFr}`, {
         fontFamily: FONT_UI,
         fontSize: '12px',
         color: '#fffbf5',
@@ -79,12 +79,12 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.barWidth = team === 'player' ? 54 : 44
     this.barHeight = 6
     this.hpBarBg = scene.add
-      .rectangle(x, y - 36 * s, this.barWidth + 2, this.barHeight + 2, 0x1e2438, 0.9)
+      .rectangle(x, y - 40 * s, this.barWidth + 2, this.barHeight + 2, 0x1e2438, 0.9)
       .setDepth(1001)
     this.hpBarFg = scene.add
       .rectangle(
         x - this.barWidth / 2,
-        y - 36 * s,
+        y - 40 * s,
         this.barWidth,
         this.barHeight,
         team === 'player' ? Theme.hpGreen : Theme.hpRed,
@@ -133,15 +133,15 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(this.y)
 
     this.shadow
-      .setPosition(this.x, this.y + 22 * s)
-      .setSize(48 * s, 16 * s)
-      .setDisplaySize(48 * s, 16 * s)
+      .setPosition(this.x, this.y + 28 * s)
+      .setSize(56 * s, 18 * s)
+      .setDisplaySize(56 * s, 18 * s)
       .setDepth(this.y - 1)
       .setAlpha(0.22 + s * 0.14)
 
-    this.label.setPosition(this.x, this.y - 52 * s).setScale(0.85 + s * 0.2)
-    this.hpBarBg.setPosition(this.x, this.y - 36 * s).setScale(0.9 + s * 0.15)
-    this.hpBarFg.setPosition(this.x - this.barWidth / 2, this.y - 36 * s)
+    this.label.setPosition(this.x, this.y - 58 * s).setScale(0.85 + s * 0.2)
+    this.hpBarBg.setPosition(this.x, this.y - 40 * s).setScale(0.9 + s * 0.15)
+    this.hpBarFg.setPosition(this.x - this.barWidth / 2, this.y - 40 * s)
 
     const dt = this.scene.game.loop.delta
     this.displayHp += (this.hp - this.displayHp) * Math.min(1, dt / 120)

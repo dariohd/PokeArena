@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { toggleMute } from '../audio'
-import { paintArtBackdrop, placeHeroArt } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_H, GAME_W } from '../config'
 import { claimMission, loadSave, writeSave } from '../data/pokeapi'
 import { MISSION_DEFS, formatPokedollars } from '../data/types'
@@ -16,7 +17,6 @@ const NAV = [
   { title: 'Pokédex', accent: 0x48c8e0, scene: 'pokedex' },
 ]
 
-/** Hub : artwork réel + UI plate. Zéro décor inventé. */
 export class HubScene extends Phaser.Scene {
   constructor() {
     super('hub')
@@ -27,18 +27,23 @@ export class HubScene extends Phaser.Scene {
     const save = loadSave()
     const heroId = save.team[0]?.id || save.starterId || 25
 
-    const mon = await paintArtBackdrop(this, heroId, { dim: 0.55, zoom: 1.35, tint: 0xb0b8c8 })
-    if (mon) placeHeroArt(this, mon.spriteKey, GAME_W * 0.68, GAME_H * 0.52, 0.58)
+    await paintScene(this, BG.hub, {
+      dim: 0.32,
+      heroId,
+      heroKind: 'home',
+      heroX: GAME_W * 0.66,
+      heroY: GAME_H * 0.52,
+      heroScale: 0.5,
+    })
 
-    // Barre top plate
-    this.add.rectangle(GAME_W / 2, 30, GAME_W, 60, 0x000000, 0.55).setDepth(30)
+    this.add.rectangle(GAME_W / 2, 30, GAME_W, 60, 0x000000, 0.5).setDepth(30)
     titleText(this, 28, 30, 'PokeArena', { size: '20px', color: '#ffffff', origin: 0 }).setDepth(31)
     bodyText(
       this,
       160,
       30,
       `${formatPokedollars(save.coins)}  ·  ${save.inventory.pokeball} Ball  ·  ${save.inventory.rareCandy} SB  ·  R${save.unlockedGen}`,
-      { size: '12px', color: 'rgba(255,255,255,0.88)', origin: 0 },
+      { size: '12px', color: 'rgba(255,255,255,0.9)', origin: 0 },
     ).setDepth(31)
 
     NAV.forEach((n, i) => {
@@ -47,11 +52,11 @@ export class HubScene extends Phaser.Scene {
       ).setDepth(25)
     })
 
-    // Quête une ligne
-    const m = save.missions.find((x) => {
-      const d = MISSION_DEFS.find((dd) => dd.id === x.id)
-      return d && x.progress >= x.target && !x.claimed
-    }) ?? save.missions[0]
+    const m =
+      save.missions.find((x) => {
+        const d = MISSION_DEFS.find((dd) => dd.id === x.id)
+        return d && x.progress >= x.target && !x.claimed
+      }) ?? save.missions[0]
     const def = m ? MISSION_DEFS.find((d) => d.id === m.id) : null
     if (m && def) {
       this.add.rectangle(GAME_W - 150, GAME_H - 70, 260, 90, 0x000000, 0.55).setDepth(24)

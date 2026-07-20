@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { paintArtBackdrop } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { applyTrain, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { effectiveLevel, type OwnedMon } from '../data/types'
@@ -9,7 +10,6 @@ import {
   ensureItemIcons,
   ensureTextures,
   fadeIn,
-  hexCss,
   itemTextureKey,
   makeBackButton,
   makeButton,
@@ -25,7 +25,7 @@ export class TrainScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintArtBackdrop(this, 68, { dim: 0.62, zoom: 1.2, tint: 0x909090 })
+    await paintScene(this, BG.train, { dim: 0.48 })
     await ensureItemIcons(this, ['rareCandy'])
 
     const save = loadSave()
@@ -34,7 +34,7 @@ export class TrainScene extends Phaser.Scene {
       this.add.image(GAME_W / 2 - 90, 54, itemTextureKey('rareCandy')).setScale(1.8).setDepth(20)
     }
     walletBar(this, 54, [`${save.inventory.rareCandy} Super Bonbon`], {
-      color: 'rgba(255,255,255,0.8)',
+      color: 'rgba(255,255,255,0.85)',
     }).setDepth(20)
 
     const pool: { where: 'team' | 'box'; index: number; mon: OwnedMon }[] = [
@@ -46,7 +46,7 @@ export class TrainScene extends Phaser.Scene {
     const details = ids.length ? await fetchMany(ids, { full: true }) : []
     await ensureTextures(
       this,
-      details.map((m) => ({ key: m.spriteKey, url: m.spriteUrl })),
+      details.map((m) => ({ key: m.homeKey, url: m.homeUrl })),
     )
     const byId = new Map(details.map((m) => [m.id, m]))
 
@@ -56,8 +56,8 @@ export class TrainScene extends Phaser.Scene {
       const y = 150 + Math.floor(i / 6) * 155
       this.add.rectangle(x, y, 120, 140, 0x000000, 0.55).setDepth(12)
       this.add.rectangle(x, y, 120, 140).setStrokeStyle(2, mon?.color ?? Theme.gold).setDepth(12)
-      if (mon && this.textures.exists(mon.spriteKey)) {
-        this.add.image(x, y - 18, mon.spriteKey).setScale(0.14).setDepth(13)
+      if (mon && this.textures.exists(mon.homeKey)) {
+        this.add.image(x, y - 18, mon.homeKey).setScale(0.18).setDepth(13)
       }
       bodyText(
         this,

@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { playCry } from '../audio'
-import { paintArtBackdrop } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { fetchMon, fetchMany, loadSave } from '../data/pokeapi'
 import { GEN_MAX_ID, TYPE_COLORS, TYPE_FR, type MonSummary } from '../data/types'
@@ -9,7 +10,6 @@ import {
   bodyText,
   ensureTextures,
   fadeIn,
-  hexCss,
   makeBackButton,
   makeButton,
   titleText,
@@ -30,7 +30,7 @@ export class PokedexScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintArtBackdrop(this, 151, { dim: 0.7, zoom: 1.15, tint: 0x707888 })
+    await paintScene(this, BG.dex, { dim: 0.55 })
     const save = loadSave()
     const maxId = GEN_MAX_ID[save.unlockedGen] ?? 151
 
@@ -40,7 +40,7 @@ export class PokedexScene extends Phaser.Scene {
       GAME_W / 2,
       54,
       `Vus ${save.seen.length} · Capturés ${save.roster.length} · Gen 1–${save.unlockedGen}`,
-      { size: '12px', color: 'rgba(255,255,255,0.7)' },
+      { size: '12px', color: 'rgba(255,255,255,0.75)' },
     ).setDepth(20)
 
     this.add.rectangle(300, 270, 520, 380, 0x000000, 0.55).setDepth(10)
@@ -99,7 +99,7 @@ export class PokedexScene extends Phaser.Scene {
 
     await ensureTextures(
       this,
-      mons.map((m) => ({ key: m.spriteKey, url: m.spriteUrl })),
+      mons.map((m) => ({ key: m.homeKey, url: m.homeUrl })),
     )
 
     ids.forEach((id, i) => {
@@ -119,8 +119,8 @@ export class PokedexScene extends Phaser.Scene {
       g.strokeRoundedRect(0, 0, 150, 76, 8)
       card.add(g)
 
-      if (seen && knownMon && this.textures.exists(knownMon.spriteKey)) {
-        const img = this.add.image(32, 38, knownMon.spriteKey).setScale(0.09)
+      if (seen && knownMon && this.textures.exists(knownMon.homeKey)) {
+        const img = this.add.image(32, 38, knownMon.homeKey).setScale(0.1)
         if (!caught) img.setTint(0x333344)
         card.add(img)
       }
@@ -154,12 +154,12 @@ export class PokedexScene extends Phaser.Scene {
 
   async showDetail(id: number) {
     const mon = await fetchMon(id)
-    await ensureTextures(this, [{ key: mon.spriteKey, url: mon.spriteUrl }])
+    await ensureTextures(this, [{ key: mon.homeKey, url: mon.homeUrl }])
     this.sprite?.destroy()
     this.badges.forEach((b) => b.destroy())
     this.badges = []
 
-    this.sprite = this.add.image(750, 170, mon.spriteKey).setScale(0.26).setData('dexEntry', true).setDepth(16)
+    this.sprite = this.add.image(750, 170, mon.homeKey).setScale(0.32).setData('dexEntry', true).setDepth(16)
     mon.types.forEach((t, i) => {
       const badge = typeBadge(this, 660 + i * 70, 250, TYPE_FR[t] ?? t, TYPE_COLORS[t] ?? Theme.blue)
       badge.setData('dexEntry', true).setDepth(16)

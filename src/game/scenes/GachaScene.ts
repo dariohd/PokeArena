@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { playCry } from '../audio'
-import { paintArtBackdrop, placeHeroArt } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { fetchMon, loadSave, pullGacha, pullGachaMulti, writeSave } from '../data/pokeapi'
 import {
@@ -12,7 +13,6 @@ import {
   type RegionBanner,
   type RegionId,
 } from '../data/types'
-import { Theme } from '../theme'
 import {
   bodyText,
   ensureTextures,
@@ -24,18 +24,6 @@ import {
   titleText,
   walletBar,
 } from '../ui'
-
-const BANNER_BG: Record<string, number> = {
-  kanto: 150,
-  johto: 249,
-  hoenn: 384,
-  sinnoh: 483,
-  unova: 643,
-  kalos: 716,
-  alola: 791,
-  galar: 888,
-  paldea: 1008,
-}
 
 export class GachaScene extends Phaser.Scene {
   private busy = false
@@ -66,13 +54,13 @@ export class GachaScene extends Phaser.Scene {
   }
 
   async drawPick(banners: RegionBanner[], balls: number, coins: number, unlockedGen: number) {
-    await paintArtBackdrop(this, 151, { dim: 0.62, zoom: 1.3, tint: 0x9098a8 })
+    await paintScene(this, BG.gachaDark, { dim: 0.4 })
     titleText(this, GAME_W / 2, 28, 'Bannières', { size: '26px', color: '#ffffff' }).setDepth(20)
     walletBar(
       this,
       56,
       [`${balls} Poké Ball`, formatPokedollars(coins), `pity 4★ ${GACHA_PITY}`],
-      { color: 'rgba(255,255,255,0.8)' },
+      { color: 'rgba(255,255,255,0.85)' },
     ).setDepth(20)
 
     banners.forEach((b, i) => {
@@ -123,8 +111,7 @@ export class GachaScene extends Phaser.Scene {
     const b = this.selected!
     const save = loadSave()
     const pity = save.gachaPityByBanner[b.id] ?? 0
-    const bgId = BANNER_BG[b.id] ?? b.featured[0] ?? 150
-    await paintArtBackdrop(this, bgId, { dim: 0.6, zoom: 1.25, tint: 0x888890 })
+    await paintScene(this, BG.gacha, { dim: 0.42, heroId: b.featured[0], heroKind: 'home', heroScale: 0.28, heroY: 200 })
 
     titleText(this, GAME_W / 2, 28, b.nameFr, { size: '24px', color: '#ffffff' }).setDepth(20)
     this.resLabel = walletBar(
@@ -133,13 +120,6 @@ export class GachaScene extends Phaser.Scene {
       [`${balls} Poké Ball`, formatPokedollars(coins), `Pity 4★ ${pity}/${GACHA_PITY}`],
       { color: 'rgba(255,255,255,0.85)' },
     ).setDepth(20)
-
-    bodyText(this, GAME_W / 2, 82, '1★ · 2★ · 3★ · 4★ légendaire', {
-      size: '11px',
-      color: 'rgba(255,255,255,0.55)',
-    }).setDepth(20)
-
-    this.add.rectangle(GAME_W / 2, 230, 260, 240, 0x000000, 0.4).setDepth(12)
 
     this.status = bodyText(this, GAME_W / 2, 375, 'x10 = un 3★ garanti', {
       size: '14px',
@@ -223,10 +203,11 @@ export class GachaScene extends Phaser.Scene {
   async showPull(id: number, stars: number, shiny: boolean, holdMs = 90) {
     this.status.setText('…')
     const mon = await fetchMon(id, { full: false })
-    await ensureTextures(this, [{ key: mon.spriteKey, url: mon.spriteUrl }])
+    await ensureTextures(this, [{ key: mon.homeKey, url: mon.homeUrl }])
     this.preview?.destroy()
-    this.preview = placeHeroArt(this, mon.spriteKey, GAME_W / 2, 220, 0.32) ?? undefined
-    if (this.preview && shiny) this.preview.setTint(0xfff1a8)
+    this.preview = this.add.image(GAME_W / 2, 220, mon.homeKey).setScale(0.08).setDepth(12)
+    if (shiny) this.preview.setTint(0xfff1a8)
+    this.tweens.add({ targets: this.preview, scale: 0.38, duration: 160, ease: 'Back.easeOut' })
     this.cameras.main.shake(stars >= 4 ? 70 : 25, stars >= 4 ? 0.01 : 0.003)
     playCry(mon.cryUrl, 0.35)
     this.status.setText(`${mon.nameFr}${shiny ? ' chromatique' : ''}\n${starsLabel(stars)}`)

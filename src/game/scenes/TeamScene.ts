@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { paintArtBackdrop } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { MAX_TEAM, effectiveLevel } from '../data/types'
@@ -21,20 +22,20 @@ export class TeamScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintArtBackdrop(this, 137, { dim: 0.65, zoom: 1.2, tint: 0x888898 })
+    await paintScene(this, BG.team, { dim: 0.5 })
     const save = loadSave()
 
     titleText(this, GAME_W / 2, 28, 'Équipe & PC', { size: '24px', color: '#ffffff' }).setDepth(20)
     bodyText(this, GAME_W / 2, 54, 'Clic équipe = retirer · clic boîte = ajouter', {
       size: '12px',
-      color: 'rgba(255,255,255,0.65)',
+      color: 'rgba(255,255,255,0.7)',
     }).setDepth(20)
 
     const ids = [...new Set([...save.team, ...save.box].map((t) => t.id))]
     const mons = ids.length ? await fetchMany(ids, { full: false }) : []
     await ensureTextures(
       this,
-      mons.map((m) => ({ key: m.spriteKey, url: m.spriteUrl })),
+      mons.map((m) => ({ key: m.homeKey, url: m.homeUrl })),
     )
     const byId = new Map(mons.map((m) => [m.id, m]))
 
@@ -50,8 +51,8 @@ export class TeamScene extends Phaser.Scene {
       const y = 160
       this.add.rectangle(x, y, 120, 130, 0x000000, 0.55).setDepth(12)
       this.add.rectangle(x, y, 120, 130).setStrokeStyle(2, mon?.color ?? Theme.blue).setDepth(12)
-      if (mon && this.textures.exists(mon.spriteKey)) {
-        this.add.image(x, y - 16, mon.spriteKey).setScale(0.16).setDepth(13)
+      if (mon && this.textures.exists(mon.homeKey)) {
+        this.add.image(x, y - 16, mon.homeKey).setScale(0.2).setDepth(13)
       }
       bodyText(this, x, y + 42, `${mon?.nameFr ?? slot.id}\nN.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
         size: '11px',
@@ -82,8 +83,8 @@ export class TeamScene extends Phaser.Scene {
       const x = 70 + (i % 6) * 145
       const y = 330 + Math.floor(i / 6) * 90
       this.add.rectangle(x, y, 120, 78, 0x000000, 0.5).setDepth(12)
-      if (mon && this.textures.exists(mon.spriteKey)) {
-        this.add.image(x - 28, y, mon.spriteKey).setScale(0.1).setDepth(13)
+      if (mon && this.textures.exists(mon.homeKey)) {
+        this.add.image(x - 28, y, mon.homeKey).setScale(0.12).setDepth(13)
       }
       bodyText(this, x + 18, y - 8, mon?.nameFr ?? `#${slot.id}`, {
         size: '11px',

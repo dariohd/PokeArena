@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import { BG } from '../assets'
+import { preloadBackgrounds } from '../backdrop'
 import { ensureTypeChart, fetchMany, loadSave } from '../data/pokeapi'
 import { ITEM_SPRITE, STARTERS } from '../data/types'
 import { hideBootOverlay, setBootProgress } from '../fx'
@@ -10,17 +12,18 @@ export class BootScene extends Phaser.Scene {
   }
 
   async create() {
-    setBootProgress(4, 'Connexion PokéAPI…')
+    setBootProgress(5, 'Fonds Pokémon Showdown…')
     const save = loadSave()
 
     try {
-      setBootProgress(12, 'Chart des types…')
+      await preloadBackgrounds(this)
+      setBootProgress(25, 'Chart des types…')
       await ensureTypeChart()
 
-      setBootProgress(28, 'Objets du Mart…')
+      setBootProgress(40, 'Objets…')
       await ensureItemIcons(this)
 
-      setBootProgress(42, 'Équipe & mascottes…')
+      setBootProgress(55, 'Sprites HOME…')
       const ids = [
         ...new Set([
           ...STARTERS,
@@ -30,15 +33,11 @@ export class BootScene extends Phaser.Scene {
           25,
           150,
           151,
-          249,
-          384,
         ]),
       ]
       const mons = await fetchMany(ids, { full: false })
-      setBootProgress(58, `${mons.length} espèces en cache…`)
-
       for (const m of mons) {
-        if (!this.textures.exists(m.battleKey)) this.load.image(m.battleKey, m.battleUrl)
+        if (!this.textures.exists(m.homeKey)) this.load.image(m.homeKey, m.homeUrl)
         if (!this.textures.exists(m.spriteKey)) this.load.image(m.spriteKey, m.spriteUrl)
       }
       for (const [k, api] of Object.entries(ITEM_SPRITE)) {
@@ -47,27 +46,25 @@ export class BootScene extends Phaser.Scene {
       }
 
       if (this.load.list.size > 0) {
-        setBootProgress(68, 'Téléchargement des sprites…')
+        setBootProgress(70, 'Téléchargement…')
         await new Promise<void>((resolve) => {
-          this.load.on('progress', (v: number) => {
-            setBootProgress(68 + v * 28, 'Sprites PokéAPI…')
-          })
+          this.load.on('progress', (v: number) => setBootProgress(70 + v * 25, 'Sprites HQ…'))
           this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
           this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
           this.load.start()
         })
       }
 
-      setBootProgress(100, 'Prêt !')
-      await this.wait(380)
+      setBootProgress(100, 'Prêt')
+      await this.wait(280)
     } catch (e) {
-      console.warn('PokéAPI boot partial fail', e)
-      setBootProgress(100, 'Mode hors-ligne partiel…')
-      await this.wait(450)
+      console.warn('boot partial', e)
+      setBootProgress(100, 'Mode partiel…')
+      await this.wait(400)
     }
 
     hideBootOverlay()
-    await this.wait(280)
+    await this.wait(220)
     this.scene.start('title')
   }
 

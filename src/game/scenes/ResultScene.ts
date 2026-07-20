@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { paintArtBackdrop } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import type { ArenaResult } from '../data/types'
 import { loadSave } from '../data/pokeapi'
@@ -14,18 +15,14 @@ export class ResultScene extends Phaser.Scene {
 
   async create(data: ArenaResult) {
     fadeIn(this, 0x0b0d12)
-    await paintArtBackdrop(this, data.won ? 151 : 94, {
-      dim: 0.58,
-      zoom: 1.3,
-      tint: data.won ? 0xa0b090 : 0x908080,
-    })
+    await paintScene(this, data.won ? BG.resultWin : BG.resultLose, { dim: 0.42 })
 
     this.add.rectangle(GAME_W / 2, 270, 680, 400, 0x000000, 0.55).setDepth(10)
 
     const save = loadSave()
     titleText(this, GAME_W / 2, 95, data.won ? 'Victoire' : 'K.O.', {
       size: '40px',
-      color: data.won ? hexCss(Theme.grassDark) : hexCss(Theme.red),
+      color: data.won ? '#7ac74f' : '#e3350d',
     }).setDepth(20)
 
     const lines = [
@@ -66,8 +63,4 @@ export class ResultScene extends Phaser.Scene {
       onClick: () => goScene(this, 'title'),
     }).setDepth(30)
   }
-}
-
-function hexCss(n: number): string {
-  return `#${n.toString(16).padStart(6, '0')}`
 }

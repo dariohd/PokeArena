@@ -21,6 +21,10 @@ export type MonSummary = {
   flavorFr: string
   spriteKey: string
   spriteUrl: string
+  /** Sprite Pokémon HOME (512px HQ) */
+  homeKey: string
+  homeUrl: string
+  homeShinyUrl: string
   battleKey: string
   battleUrl: string
   spriteUrlShiny: string

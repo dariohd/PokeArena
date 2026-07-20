@@ -26,7 +26,7 @@ import {
   type SaveData,
 } from './types'
 
-const CACHE_KEY = 'pokearena-api-v4'
+const CACHE_KEY = 'pokearena-api-v5'
 const TYPE_KEY = 'pokearena-types-v2'
 const MOVE_KEY = 'pokearena-moves-v1'
 const SAVE_KEY = 'pokearena-save-v4'
@@ -303,13 +303,12 @@ function shinyUrl(id: number) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${id}.png`
 }
 
-/** Sprite home (portraits menus) — fallback artwork si manquant */
-export function homeSpriteUrl(id: number) {
+function homeUrl(id: number) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`
 }
 
-export function itemCdnUrl(apiName: string) {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${apiName}.png`
+function homeShiny(id: number) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/shiny/${id}.png`
 }
 
 function genFromId(id: number): number {
@@ -467,6 +466,7 @@ type PokemonApi = {
     front_shiny?: string | null
     other?: {
       'official-artwork'?: { front_default?: string; front_shiny?: string }
+      home?: { front_default?: string; front_shiny?: string }
     }
   }
 }
@@ -653,8 +653,8 @@ export async function fetchMon(
     poke.sprites?.other?.['official-artwork']?.front_default ?? spriteUrl(poke.id)
   const artShiny =
     poke.sprites?.other?.['official-artwork']?.front_shiny ?? shinyUrl(poke.id)
-  const battle = poke.sprites?.front_default ?? battleSpriteUrl(poke.id)
-  const battleShiny = poke.sprites?.front_shiny ?? battleShinyUrl(poke.id)
+  const home = poke.sprites?.other?.home?.front_default ?? homeUrl(poke.id)
+  const homeSh = poke.sprites?.other?.home?.front_shiny ?? homeShiny(poke.id)
 
   const mon: MonSummary = {
     id: poke.id,
@@ -664,10 +664,14 @@ export async function fetchMon(
     flavorFr,
     spriteKey: `art-${poke.id}`,
     spriteUrl: art,
-    battleKey: `bat-${poke.id}`,
-    battleUrl: battle,
+    homeKey: `home-${poke.id}`,
+    homeUrl: home,
+    homeShinyUrl: homeSh,
+    // Combat = HOME (plus beau que le sprite pixel 96px)
+    battleKey: `home-${poke.id}`,
+    battleUrl: home,
     spriteUrlShiny: artShiny,
-    battleShinyUrl: battleShiny,
+    battleShinyUrl: homeSh,
     cryUrl: poke.cries?.latest ?? poke.cries?.legacy ?? null,
     types,
     hp: stats['hp'] ?? 50,

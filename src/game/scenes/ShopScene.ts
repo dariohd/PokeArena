@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { paintArtBackdrop } from '../backdrop'
+import { BG } from '../assets'
+import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
 import { buyItem, loadSave, writeSave } from '../data/pokeapi'
 import { SHOP_CATALOG, formatPokedollars, type InventoryKey } from '../data/types'
@@ -23,7 +24,7 @@ export class ShopScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintArtBackdrop(this, 52, { dim: 0.62, zoom: 1.25, tint: 0x9098a8 })
+    await paintScene(this, BG.shop, { dim: 0.45 })
     await ensureItemIcons(this)
 
     const save = loadSave()
@@ -36,7 +37,7 @@ export class ShopScene extends Phaser.Scene {
         `${save.inventory.pokeball} Ball`,
         `${save.inventory.rareCandy} Super Bonbon`,
       ],
-      { color: 'rgba(255,255,255,0.8)' },
+      { color: 'rgba(255,255,255,0.85)' },
     ).setDepth(20)
 
     SHOP_CATALOG.forEach((item, i) => {
@@ -68,7 +69,7 @@ export class ShopScene extends Phaser.Scene {
       bodyText(this, x + 90, y + 40, `${item.desc} · stock ${owned}`, {
         size: '12px',
         origin: 0,
-        color: 'rgba(255,255,255,0.6)',
+        color: 'rgba(255,255,255,0.65)',
       }).setDepth(13)
       bodyText(this, x + 90, y + 60, formatPokedollars(item.price), {
         size: '13px',
