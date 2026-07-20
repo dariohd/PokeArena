@@ -178,6 +178,8 @@ body {
   display: block;
   margin: 0 auto;
   border-radius: 18px;
+  image-rendering: auto;
+  -webkit-font-smoothing: antialiased;
   box-shadow:
     0 0 0 3px rgba(255, 251, 245, 0.2),
     0 24px 60px rgba(0, 0, 0, 0.45);

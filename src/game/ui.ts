@@ -324,12 +324,88 @@ export async function ensureTextures(
       queued = true
     }
   }
-  if (!queued) return
-  await new Promise<void>((resolve) => {
-    scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
-    scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
-    scene.load.start()
+  if (queued) {
+    await new Promise<void>((resolve) => {
+      scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
+      scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
+      scene.load.start()
+    })
+  }
+  for (const e of entries) {
+    if (scene.textures.exists(e.key)) {
+      scene.textures.get(e.key).setFilter(Phaser.Textures.FilterMode.LINEAR)
+    }
+  }
+}
+
+/** Orbe menu glossy (style hub gacha) */
+export function makeGlassOrb(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  label: string,
+  accent: number,
+  onClick: () => void,
+) {
+  const container = scene.add.container(x, y)
+  const g = scene.add.graphics()
+  g.fillStyle(0x000000, 0.35)
+  g.fillRoundedRect(-108, -22, 216, 44, 22)
+  g.fillStyle(0xffffff, 0.12)
+  g.fillRoundedRect(-108, -22, 216, 44, 22)
+  g.lineStyle(2, accent, 0.95)
+  g.strokeRoundedRect(-108, -22, 216, 44, 22)
+  g.fillStyle(accent, 1)
+  g.fillCircle(-84, 0, 8)
+  g.fillStyle(0xffffff, 0.35)
+  g.fillRoundedRect(-100, -18, 100, 10, 6)
+
+  const text = scene.add
+    .text(-60, 0, label, {
+      fontFamily: FONT_TITLE,
+      fontSize: '16px',
+      color: '#ffffff',
+    })
+    .setOrigin(0, 0.5)
+
+  container.add([g, text])
+  container.setSize(216, 44)
+  container.setInteractive({
+    hitArea: new Phaser.Geom.Rectangle(-108, -22, 216, 44),
+    hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+    useHandCursor: true,
   })
+  container.on('pointerover', () => {
+    scene.tweens.add({ targets: container, scale: 1.06, x: x + 6, duration: 100 })
+  })
+  container.on('pointerout', () => {
+    scene.tweens.add({ targets: container, scale: 1, x, duration: 100 })
+  })
+  container.on('pointerdown', onClick)
+  return container
+}
+
+/** Fond cinématique hub (pas de rose centre plat) */
+export function drawCinematicLobby(scene: Phaser.Scene) {
+  const g = scene.add.graphics().setDepth(0)
+  g.fillGradientStyle(0x0a1020, 0x0a1020, 0x1a2848, 0x1a2848, 1)
+  g.fillRect(0, 0, GAME_W, GAME_H)
+  g.fillGradientStyle(0x1a2848, 0x1a2848, 0x2a4068, 0x3a5080, 1)
+  g.fillRect(0, GAME_H * 0.35, GAME_W, GAME_H * 0.65)
+
+  // Sol miroir
+  g.fillStyle(0x121a30, 1)
+  g.fillEllipse(GAME_W * 0.58, GAME_H * 0.88, 520, 90)
+  g.fillStyle(0xffffff, 0.04)
+  g.fillEllipse(GAME_W * 0.58, GAME_H * 0.86, 420, 50)
+
+  // Rayons soft
+  g.fillStyle(0x4a90d8, 0.06)
+  g.fillTriangle(GAME_W * 0.7, -20, GAME_W * 0.55, GAME_H, GAME_W * 0.85, GAME_H)
+  g.fillStyle(0xe3350d, 0.05)
+  g.fillTriangle(GAME_W * 0.45, -40, GAME_W * 0.3, GAME_H, GAME_W * 0.55, GAME_H)
+
+  return g
 }
 
 export async function ensureItemIcons(scene: Phaser.Scene, keys: InventoryKey[] = Object.keys(ITEM_SPRITE) as InventoryKey[]) {

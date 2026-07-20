@@ -1,184 +1,218 @@
 import Phaser from 'phaser'
 import { toggleMute } from '../audio'
 import { GAME_H, GAME_W } from '../config'
-import { claimMission, fetchMany, loadSave, writeSave } from '../data/pokeapi'
+import { claimMission, fetchMon, loadSave, writeSave } from '../data/pokeapi'
 import { MISSION_DEFS, formatPokedollars } from '../data/types'
 import { spawnAmbientSparkles } from '../fx'
 import { Theme } from '../theme'
 import {
   bodyText,
-  drawPanel,
-  drawRoom,
+  drawCinematicLobby,
   ensureTextures,
   fadeIn,
   goScene,
-  hexCss,
   makeButton,
+  makeGlassOrb,
   titleText,
-  walletBar,
 } from '../ui'
 
-const NAV = [
-  { title: 'ARÈNE', sub: 'Combats · loot Balls & Bonbons', accent: Theme.red, scene: 'arena', mascot: 25 },
-  { title: 'BANNIÈRES', sub: 'x1 / x10 · pity 4★ à 50', accent: Theme.gold, scene: 'gacha', mascot: 150 },
-  { title: 'DOJO', sub: 'Super Bonbon = +1 niveau', accent: Theme.grassDark, scene: 'train', mascot: 68 },
-  { title: 'ÉQUIPE / PC', sub: 'Roster & boîte PC', accent: Theme.blue, scene: 'team', mascot: 133 },
-  { title: 'POKÉ MART', sub: 'Balls · soins · Bonbons', accent: 0xe09030, scene: 'shop', mascot: 143 },
-  { title: 'POKÉDEX', sub: 'Espèces vues', accent: 0x3090a0, scene: 'pokedex', mascot: 151 },
-] as const
-
+/**
+ * Hub style gacha premium (inspiré Brave Souls) :
+ * artwork HQ full-bleed + orbes menu glossy + HUD ressources.
+ */
 export class HubScene extends Phaser.Scene {
   constructor() {
     super('hub')
   }
 
   async create() {
-    fadeIn(this, Theme.pink)
-    drawRoom(this, 'centre')
-    spawnAmbientSparkles(this, 12, 0xffffff)
+    fadeIn(this, 0x0a1020)
+    drawCinematicLobby(this)
+    spawnAmbientSparkles(this, 28, 0xa8d0ff)
+
     const save = loadSave()
+    const heroId = save.team[0]?.id || save.starterId || 25
+    const mon = await fetchMon(heroId, { full: false }).catch(() => null)
 
-    titleText(this, GAME_W / 2, 26, 'Centre Pokémon', { size: '26px', color: '#ffffff' })
-    bodyText(this, GAME_W / 2, 50, 'Lobby · choisis ta destination', {
-      size: '12px',
-      color: '#5a3040',
-    })
-    walletBar(
+    if (mon) {
+      await ensureTextures(this, [{ key: mon.spriteKey, url: mon.spriteUrl }])
+      if (this.textures.exists(mon.spriteKey)) {
+        // Glow derrière le héros
+        const glow = this.add.circle(GAME_W * 0.62, GAME_H * 0.52, 160, Theme.blue, 0.18).setDepth(4)
+        this.tweens.add({
+          targets: glow,
+          alpha: 0.32,
+          scale: 1.12,
+          duration: 1800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        })
+
+        const hero = this.add
+          .image(GAME_W * 0.62, GAME_H * 0.48, mon.spriteKey)
+          .setScale(0.55)
+          .setDepth(8)
+          .setAlpha(0)
+        this.tweens.add({
+          targets: hero,
+          alpha: 1,
+          scale: 0.62,
+          duration: 650,
+          ease: 'Cubic.easeOut',
+        })
+        this.tweens.add({
+          targets: hero,
+          y: hero.y - 12,
+          duration: 2600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        })
+
+        // Reflet sol
+        const mirror = this.add
+          .image(GAME_W * 0.62, GAME_H * 0.86, mon.spriteKey)
+          .setScale(0.62, -0.22)
+          .setAlpha(0.12)
+          .setDepth(7)
+
+        bodyText(this, GAME_W * 0.62, GAME_H - 36, mon.nameFr, {
+          size: '14px',
+          color: 'rgba(255,255,255,0.7)',
+        }).setDepth(20)
+
+        void mirror
+      }
+    }
+
+    // HUD top glass
+    const hud = this.add.graphics().setDepth(30)
+    hud.fillStyle(0x000000, 0.45)
+    hud.fillRoundedRect(16, 12, GAME_W - 32, 44, 14)
+    hud.lineStyle(1, 0xffffff, 0.18)
+    hud.strokeRoundedRect(16, 12, GAME_W - 32, 44, 14)
+
+    titleText(this, 36, 34, 'PokeArena', {
+      size: '18px',
+      color: '#ffffff',
+      origin: 0,
+    }).setDepth(31)
+
+    bodyText(
       this,
-      68,
-      [
-        formatPokedollars(save.coins),
-        `${save.inventory.pokeball} Ball`,
-        `${save.inventory.rareCandy} Super Bonbon`,
-        `Région ${save.unlockedGen}`,
-      ],
-      { color: '#5a3040' },
-    )
+      200,
+      34,
+      `${formatPokedollars(save.coins)}   ·   ${save.inventory.pokeball} Ball   ·   ${save.inventory.rareCandy} SB   ·   R${save.unlockedGen}`,
+      { size: '12px', color: 'rgba(255,255,255,0.85)', origin: 0 },
+    ).setDepth(31)
 
-    const mascotIds = [...new Set(NAV.map((n) => n.mascot))]
-    const mons = await fetchMany(mascotIds, { full: false })
-    await ensureTextures(
-      this,
-      mons.map((m) => ({ key: m.battleKey, url: m.battleUrl })),
-    )
-    const byId = new Map(mons.map((m) => [m.id, m]))
+    // Menu orbes gauche
+    const nav = [
+      { title: 'Arène', accent: Theme.red, scene: 'arena' },
+      { title: 'Bannières', accent: Theme.gold, scene: 'gacha' },
+      { title: 'Dojo', accent: Theme.grassDark, scene: 'train' },
+      { title: 'Équipe', accent: Theme.blue, scene: 'team' },
+      { title: 'Poké Mart', accent: 0xe09030, scene: 'shop' },
+      { title: 'Pokédex', accent: 0x48c8e0, scene: 'pokedex' },
+    ]
 
-    drawPanel(this, 28, 86, 580, 372, { stroke: Theme.red, radius: 16 })
-    this.add.text(48, 100, 'Tableau d’affichage', {
-      fontFamily: '"Fredoka", "Nunito", sans-serif',
-      fontSize: '15px',
-      color: hexCss(Theme.red),
-    })
-
-    NAV.forEach((p, i) => {
-      const col = i % 2
-      const row = Math.floor(i / 2)
-      const x = 55 + col * 270
-      const y = 138 + row * 100
-      const note = this.add.container(x, y)
-      const bg = this.add.graphics()
-      bg.fillStyle(Theme.panel, 1)
-      bg.fillRoundedRect(0, 0, 250, 88, 12)
-      bg.lineStyle(3, p.accent, 1)
-      bg.strokeRoundedRect(0, 0, 250, 88, 12)
-      const mon = byId.get(p.mascot)
-      const img =
-        mon && this.textures.exists(mon.battleKey)
-          ? this.add.image(42, 44, mon.battleKey).setScale(1.35)
-          : this.add.circle(42, 44, 18, p.accent)
-      const title = this.add.text(80, 16, p.title, {
-        fontFamily: '"Fredoka", "Nunito", sans-serif',
-        fontSize: '16px',
-        color: hexCss(Theme.ink),
-      })
-      const sub = this.add.text(80, 44, p.sub, {
-        fontFamily: '"Nunito", system-ui, sans-serif',
-        fontSize: '11px',
-        color: hexCss(Theme.muted),
-        wordWrap: { width: 155 },
-      })
-      note.add([bg, img, title, sub])
-      note.setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(0, 0, 250, 88),
-        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-        useHandCursor: true,
-      })
-      note.on('pointerover', () =>
-        this.tweens.add({ targets: note, scale: 1.04, y: y - 3, duration: 90 }),
+    nav.forEach((n, i) => {
+      const orb = makeGlassOrb(this, 130, 100 + i * 54, n.title, n.accent, () =>
+        goScene(this, n.scene, n.accent),
       )
-      note.on('pointerout', () => this.tweens.add({ targets: note, scale: 1, y, duration: 90 }))
-      note.on('pointerdown', () => goScene(this, p.scene, p.accent))
+      orb.setDepth(25)
+      orb.setAlpha(0)
+      this.tweens.add({
+        targets: orb,
+        alpha: 1,
+        x: 140,
+        duration: 280,
+        delay: 80 + i * 45,
+        ease: 'Cubic.easeOut',
+      })
     })
 
-    drawPanel(this, 630, 86, 300, 372, { stroke: Theme.blue, radius: 16 })
-    titleText(this, 780, 108, 'Quêtes du jour', { size: '16px', color: hexCss(Theme.blue) })
+    // Quêtes compactes (bas droite)
+    const qPanel = this.add.graphics().setDepth(24)
+    qPanel.fillStyle(0x000000, 0.4)
+    qPanel.fillRoundedRect(GAME_W - 290, GAME_H - 150, 270, 120, 14)
+    qPanel.lineStyle(1, 0xffffff, 0.15)
+    qPanel.strokeRoundedRect(GAME_W - 290, GAME_H - 150, 270, 120, 14)
 
-    save.missions.forEach((m, i) => {
+    bodyText(this, GAME_W - 155, GAME_H - 132, 'Quêtes', {
+      size: '13px',
+      color: '#ffd070',
+    }).setDepth(25)
+
+    const claimable = save.missions.find((m) => {
       const def = MISSION_DEFS.find((d) => d.id === m.id)
-      if (!def) return
-      const y = 148 + i * 74
-      bodyText(this, 650, y, def.title, {
-        size: '12px',
-        color: hexCss(Theme.ink),
+      return def && m.progress >= m.target && !m.claimed
+    })
+    const first = claimable ?? save.missions[0]
+    const def = first ? MISSION_DEFS.find((d) => d.id === first.id) : null
+    if (first && def) {
+      bodyText(this, GAME_W - 275, GAME_H - 108, def.title, {
+        size: '11px',
+        color: '#ffffff',
         origin: 0,
-        wrap: 260,
-      })
+        wrap: 240,
+      }).setDepth(25)
       bodyText(
         this,
-        650,
-        y + 22,
-        `${m.progress}/${m.target} · +${formatPokedollars(def.rewardCoins)} +${def.rewardBalls} Ball`,
-        { size: '11px', origin: 0 },
-      )
-      const done = m.progress >= m.target
-      if (done && !m.claimed) {
-        makeButton(this, 780, y + 50, 'Réclamer', {
-          tone: 'green',
+        GAME_W - 275,
+        GAME_H - 82,
+        `${first.progress}/${first.target}`,
+        { size: '11px', color: 'rgba(255,255,255,0.65)', origin: 0 },
+      ).setDepth(25)
+
+      if (first.progress >= first.target && !first.claimed) {
+        makeButton(this, GAME_W - 155, GAME_H - 52, 'Réclamer', {
+          tone: 'gold',
           fontSize: '12px',
-          padX: 10,
-          padY: 5,
+          padX: 12,
+          padY: 6,
           onClick: () => {
-            const next = claimMission(loadSave(), m.id)
+            const next = claimMission(loadSave(), first.id)
             if (!next) return
             writeSave(next)
             this.scene.restart()
           },
-        })
-      } else if (m.claimed) {
-        bodyText(this, 780, y + 50, 'OK', { size: '12px', color: hexCss(Theme.grassDark) })
+        }).setDepth(26)
       }
-    })
+    }
 
-    makeButton(this, 120, GAME_H - 28, save.autoMode ? 'Auto ON' : 'Auto OFF', {
-      tone: save.autoMode ? 'green' : 'ghost',
-      fontSize: '13px',
-      padX: 12,
-      padY: 8,
+    // Footer controls
+    makeButton(this, 70, GAME_H - 28, save.autoMode ? 'Auto' : 'Manuel', {
+      tone: save.autoMode ? 'green' : 'dark',
+      fontSize: '12px',
+      padX: 10,
+      padY: 6,
       onClick: () => {
         const s = loadSave()
         s.autoMode = !s.autoMode
         writeSave(s)
         this.scene.restart()
       },
-    })
+    }).setDepth(30)
 
-    makeButton(this, 280, GAME_H - 28, save.mute ? 'Son off' : 'Son on', {
-      tone: 'ghost',
-      fontSize: '13px',
-      padX: 12,
-      padY: 8,
+    makeButton(this, 160, GAME_H - 28, save.mute ? 'Son' : 'Son', {
+      tone: 'dark',
+      fontSize: '12px',
+      padX: 10,
+      padY: 6,
       onClick: () => {
         toggleMute()
         this.scene.restart()
       },
-    })
+    }).setDepth(30)
 
-    makeButton(this, 430, GAME_H - 28, 'Menu', {
+    makeButton(this, 250, GAME_H - 28, 'Menu', {
       tone: 'red',
-      fontSize: '13px',
-      padX: 12,
-      padY: 8,
+      fontSize: '12px',
+      padX: 10,
+      padY: 6,
       onClick: () => goScene(this, 'title'),
-    })
+    }).setDepth(30)
   }
 }

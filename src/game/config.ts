@@ -49,6 +49,7 @@ export function createGame(parent: string) {
       antialias: true,
       roundPixels: false,
       pixelArt: false,
+      powerPreference: 'high-performance',
     },
   })
 }
