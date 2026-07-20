@@ -1,9 +1,9 @@
 import Phaser from 'phaser'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
-import { GAME_W } from '../config'
 import { buyItem, loadSave, writeSave } from '../data/pokeapi'
 import { SHOP_CATALOG, formatPokedollars, type InventoryKey } from '../data/types'
+import { contentCard, drawShell, sectionTitle } from '../layout'
 import { Theme } from '../theme'
 import {
   bodyText,
@@ -11,10 +11,7 @@ import {
   fadeIn,
   hexCss,
   itemTextureKey,
-  makeBackButton,
   makeButton,
-  titleText,
-  walletBar,
 } from '../ui'
 
 export class ShopScene extends Phaser.Scene {
@@ -24,75 +21,61 @@ export class ShopScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintScene(this, BG.shop, { dim: 0.45 })
+    await paintScene(this, BG.shop, { dim: 0.42 })
     await ensureItemIcons(this)
+    const zone = drawShell(this, { title: 'Poké Mart', back: true })
+    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12 })
+    sectionTitle(this, zone.x + 16, zone.y + 14, 'Catalogue')
 
     const save = loadSave()
-    titleText(this, GAME_W / 2, 28, 'Poké Mart', { size: '26px', color: '#ffffff' }).setDepth(20)
-    walletBar(
-      this,
-      54,
-      [
-        formatPokedollars(save.coins),
-        `${save.inventory.pokeball} Ball`,
-        `${save.inventory.rareCandy} Super Bonbon`,
-      ],
-      { color: 'rgba(255,255,255,0.85)' },
-    ).setDepth(20)
+    const colW = (zone.w - 48) / 2
 
     SHOP_CATALOG.forEach((item, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const x = 50 + col * 460
-      const y = 100 + row * 100
+      const x = zone.x + 16 + col * (colW + 16)
+      const y = zone.y + 44 + row * 70
       const can = save.coins >= item.price
       const owned = save.inventory[item.id as InventoryKey] ?? 0
 
-      this.add.rectangle(x + 215, y + 43, 430, 86, 0x000000, 0.55).setDepth(12)
+      this.add.rectangle(x + colW / 2, y + 30, colW, 62, 0x000000, 0.35).setDepth(14)
       this.add
-        .rectangle(x + 215, y + 43, 430, 86)
+        .rectangle(x + colW / 2, y + 30, colW, 62)
         .setStrokeStyle(2, can ? Theme.blue : Theme.muted)
-        .setDepth(12)
+        .setDepth(14)
 
       const key = itemTextureKey(item.id)
       if (this.textures.exists(key)) {
-        this.add.image(x + 44, y + 43, key).setScale(2.2).setDepth(13)
+        this.add.image(x + 28, y + 30, key).setScale(1.8).setDepth(15)
       }
 
       this.add
-        .text(x + 90, y + 14, item.label, {
+        .text(x + 52, y + 14, item.label, {
           fontFamily: '"Fredoka", "Nunito", sans-serif',
-          fontSize: '16px',
-          color: hexCss(can ? Theme.white : Theme.muted),
+          fontSize: '14px',
+          color: can ? '#ffffff' : hexCss(Theme.muted),
         })
-        .setDepth(13)
-      bodyText(this, x + 90, y + 40, `${item.desc} · stock ${owned}`, {
-        size: '12px',
+        .setDepth(15)
+      bodyText(this, x + 52, y + 36, `${formatPokedollars(item.price)} · stock ${owned}`, {
+        size: '11px',
         origin: 0,
         color: 'rgba(255,255,255,0.65)',
-      }).setDepth(13)
-      bodyText(this, x + 90, y + 60, formatPokedollars(item.price), {
-        size: '13px',
-        origin: 0,
-        color: hexCss(can ? Theme.gold : Theme.muted),
-      }).setDepth(13)
+      }).setDepth(15)
 
       if (can) {
-        makeButton(this, x + 360, y + 43, 'Acheter', {
+        makeButton(this, x + colW - 50, y + 30, 'OK', {
           tone: 'blue',
-          fontSize: '13px',
-          padX: 12,
-          padY: 7,
+          fontSize: '12px',
+          padX: 10,
+          padY: 5,
           onClick: () => {
             const next = buyItem(loadSave(), item.id, item.price)
             if (!next) return
             writeSave(next)
             this.scene.restart()
           },
-        }).setDepth(14)
+        }).setDepth(16)
       }
     })
-
-    makeBackButton(this).setDepth(30)
   }
 }

@@ -1,19 +1,11 @@
 import Phaser from 'phaser'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
-import { GAME_W } from '../config'
 import { fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { MAX_TEAM, effectiveLevel } from '../data/types'
+import { contentCard, drawShell, sectionTitle } from '../layout'
 import { Theme } from '../theme'
-import {
-  bodyText,
-  ensureTextures,
-  fadeIn,
-  hexCss,
-  makeBackButton,
-  starsLabel,
-  titleText,
-} from '../ui'
+import { bodyText, ensureTextures, fadeIn, starsLabel } from '../ui'
 
 export class TeamScene extends Phaser.Scene {
   constructor() {
@@ -22,15 +14,11 @@ export class TeamScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintScene(this, BG.team, { dim: 0.5 })
+    await paintScene(this, BG.team, { dim: 0.48 })
+    const zone = drawShell(this, { title: 'Équipe & PC', back: true })
+    contentCard(this, zone.x, zone.y, zone.w, zone.h - 4, { depth: 12 })
+
     const save = loadSave()
-
-    titleText(this, GAME_W / 2, 28, 'Équipe & PC', { size: '24px', color: '#ffffff' }).setDepth(20)
-    bodyText(this, GAME_W / 2, 54, 'Clic équipe = retirer · clic boîte = ajouter', {
-      size: '12px',
-      color: 'rgba(255,255,255,0.7)',
-    }).setDepth(20)
-
     const ids = [...new Set([...save.team, ...save.box].map((t) => t.id))]
     const mons = ids.length ? await fetchMany(ids, { full: false }) : []
     await ensureTextures(
@@ -39,28 +27,29 @@ export class TeamScene extends Phaser.Scene {
     )
     const byId = new Map(mons.map((m) => [m.id, m]))
 
-    bodyText(this, 48, 78, `Équipe (${save.team.length}/${MAX_TEAM})`, {
-      size: '13px',
-      color: hexCss(Theme.red),
+    sectionTitle(this, zone.x + 16, zone.y + 14, `Équipe (${save.team.length}/${MAX_TEAM})`)
+    bodyText(this, zone.x + 200, zone.y + 16, 'Clic = retirer', {
+      size: '11px',
+      color: 'rgba(255,255,255,0.5)',
       origin: 0,
     }).setDepth(20)
 
     save.team.forEach((slot, i) => {
       const mon = byId.get(slot.id)
-      const x = 70 + i * 150
-      const y = 160
-      this.add.rectangle(x, y, 120, 130, 0x000000, 0.55).setDepth(12)
-      this.add.rectangle(x, y, 120, 130).setStrokeStyle(2, mon?.color ?? Theme.blue).setDepth(12)
+      const x = zone.x + 70 + i * 140
+      const y = zone.y + 110
+      this.add.rectangle(x, y, 120, 120, 0x000000, 0.4).setDepth(14)
+      this.add.rectangle(x, y, 120, 120).setStrokeStyle(2, mon?.color ?? Theme.blue).setDepth(14)
       if (mon && this.textures.exists(mon.homeKey)) {
-        this.add.image(x, y - 16, mon.homeKey).setScale(0.2).setDepth(13)
+        this.add.image(x, y - 14, mon.homeKey).setScale(0.18).setDepth(15)
       }
-      bodyText(this, x, y + 42, `${mon?.nameFr ?? slot.id}\nN.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
+      bodyText(this, x, y + 40, `${mon?.nameFr ?? slot.id}\nN.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
         size: '11px',
         color: '#ffffff',
         align: 'center',
-      }).setDepth(13)
+      }).setDepth(15)
       this.add
-        .zone(x, y, 120, 130)
+        .zone(x, y, 120, 120)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
           if (save.team.length <= 1) return
@@ -72,32 +61,34 @@ export class TeamScene extends Phaser.Scene {
         })
     })
 
-    bodyText(this, 48, 250, 'Boîte PC', {
-      size: '13px',
-      color: 'rgba(255,255,255,0.75)',
+    sectionTitle(this, zone.x + 16, zone.y + 200, 'Boîte PC')
+    bodyText(this, zone.x + 120, zone.y + 202, 'Clic = ajouter', {
+      size: '11px',
+      color: 'rgba(255,255,255,0.5)',
       origin: 0,
     }).setDepth(20)
 
     save.box.slice(0, 12).forEach((slot, i) => {
       const mon = byId.get(slot.id)
-      const x = 70 + (i % 6) * 145
-      const y = 330 + Math.floor(i / 6) * 90
-      this.add.rectangle(x, y, 120, 78, 0x000000, 0.5).setDepth(12)
+      const x = zone.x + 70 + (i % 6) * 140
+      const y = zone.y + 270 + Math.floor(i / 6) * 80
+      this.add.rectangle(x, y, 120, 70, 0x000000, 0.4).setDepth(14)
+      this.add.rectangle(x, y, 120, 70).setStrokeStyle(1, mon?.color ?? Theme.muted).setDepth(14)
       if (mon && this.textures.exists(mon.homeKey)) {
-        this.add.image(x - 28, y, mon.homeKey).setScale(0.12).setDepth(13)
+        this.add.image(x - 30, y, mon.homeKey).setScale(0.11).setDepth(15)
       }
-      bodyText(this, x + 18, y - 8, mon?.nameFr ?? `#${slot.id}`, {
+      bodyText(this, x + 16, y - 8, mon?.nameFr ?? `#${slot.id}`, {
         size: '11px',
         color: '#ffffff',
         origin: 0.5,
-      }).setDepth(13)
-      bodyText(this, x + 18, y + 12, `N.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
+      }).setDepth(15)
+      bodyText(this, x + 16, y + 12, `N.${effectiveLevel(slot)} ${starsLabel(slot.stars)}`, {
         size: '10px',
-        origin: 0.5,
         color: 'rgba(255,255,255,0.65)',
-      }).setDepth(13)
+        origin: 0.5,
+      }).setDepth(15)
       this.add
-        .zone(x, y, 120, 78)
+        .zone(x, y, 120, 70)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
           const s = loadSave()
@@ -112,7 +103,5 @@ export class TeamScene extends Phaser.Scene {
           this.scene.restart()
         })
     })
-
-    makeBackButton(this).setDepth(30)
   }
 }

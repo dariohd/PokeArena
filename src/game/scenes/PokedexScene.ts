@@ -2,27 +2,20 @@ import Phaser from 'phaser'
 import { playCry } from '../audio'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
-import { GAME_W } from '../config'
 import { fetchMon, fetchMany, loadSave } from '../data/pokeapi'
 import { GEN_MAX_ID, TYPE_COLORS, TYPE_FR, type MonSummary } from '../data/types'
+import { L, contentCard, drawShell, sectionTitle } from '../layout'
 import { Theme } from '../theme'
-import {
-  bodyText,
-  ensureTextures,
-  fadeIn,
-  makeBackButton,
-  makeButton,
-  titleText,
-  typeBadge,
-} from '../ui'
+import { bodyText, ensureTextures, fadeIn, makeButton, typeBadge } from '../ui'
 
 export class PokedexScene extends Phaser.Scene {
   private page = 0
-  private pageSize = 12
+  private pageSize = 9
   private list: MonSummary[] = []
   private detail!: Phaser.GameObjects.Text
   private sprite?: Phaser.GameObjects.Image
   private badges: Phaser.GameObjects.Container[] = []
+  private maxId = 151
 
   constructor() {
     super('pokedex')
@@ -30,120 +23,116 @@ export class PokedexScene extends Phaser.Scene {
 
   async create() {
     fadeIn(this, 0x0b0d12)
-    await paintScene(this, BG.dex, { dim: 0.55 })
+    await paintScene(this, BG.dex, { dim: 0.5 })
     const save = loadSave()
-    const maxId = GEN_MAX_ID[save.unlockedGen] ?? 151
+    this.maxId = GEN_MAX_ID[save.unlockedGen] ?? 151
 
-    titleText(this, GAME_W / 2, 28, 'Pokédex', { size: '26px', color: '#ffffff' }).setDepth(20)
-    bodyText(
-      this,
-      GAME_W / 2,
-      54,
-      `Vus ${save.seen.length} · Capturés ${save.roster.length} · Gen 1–${save.unlockedGen}`,
-      { size: '12px', color: 'rgba(255,255,255,0.75)' },
-    ).setDepth(20)
+    const zone = drawShell(this, { title: 'Pokédex', back: true })
+    contentCard(this, zone.x, zone.y, 520, zone.h - 4, { depth: 12 })
+    contentCard(this, zone.x + 536, zone.y, zone.w - 536, zone.h - 4, { depth: 12 })
 
-    this.add.rectangle(300, 270, 520, 380, 0x000000, 0.55).setDepth(10)
-    this.add.rectangle(750, 270, 340, 380, 0x000000, 0.55).setDepth(10)
-
-    await this.loadPage(maxId)
+    sectionTitle(this, zone.x + 16, zone.y + 12, `Vus ${save.seen.length} · Capturés ${save.roster.length}`)
 
     this.detail = this.add
-      .text(600, 250, 'Sélectionne une entrée', {
+      .text(zone.x + 552, zone.y + 200, 'Sélectionne une entrée', {
         fontFamily: '"Nunito", system-ui, sans-serif',
-        fontSize: '13px',
+        fontSize: '12px',
         color: '#ffffff',
-        wordWrap: { width: 300 },
-        lineSpacing: 5,
+        wordWrap: { width: zone.w - 570 },
+        lineSpacing: 4,
       })
       .setDepth(20)
 
-    makeButton(this, 120, 500, '◀ Page', {
+    await this.loadPage()
+
+    makeButton(this, zone.x + 80, L.dockY, '◀', {
       tone: 'blue',
       fontSize: '14px',
-      padX: 12,
+      padX: 14,
       padY: 8,
       onClick: async () => {
         this.page = Math.max(0, this.page - 1)
-        await this.loadPage(maxId)
+        await this.loadPage()
       },
-    }).setDepth(30)
-    makeButton(this, 280, 500, 'Page ▶', {
+    }).setDepth(102)
+
+    makeButton(this, zone.x + 160, L.dockY, '▶', {
       tone: 'blue',
       fontSize: '14px',
-      padX: 12,
+      padX: 14,
       padY: 8,
       onClick: async () => {
         this.page += 1
-        await this.loadPage(maxId)
+        await this.loadPage()
       },
-    }).setDepth(30)
-    makeBackButton(this).setDepth(30)
+    }).setDepth(102)
   }
 
-  async loadPage(maxId: number) {
+  async loadPage() {
     this.children.getAll().forEach((c) => {
       if (c.getData?.('dexEntry')) c.destroy()
     })
 
     const save = loadSave()
     const start = this.page * this.pageSize + 1
-    if (start > maxId) {
+    if (start > this.maxId) {
       this.page = Math.max(0, this.page - 1)
       return
     }
-    const ids = Array.from({ length: this.pageSize }, (_, i) => start + i).filter((id) => id <= maxId)
+    const ids = Array.from({ length: this.pageSize }, (_, i) => start + i).filter((id) => id <= this.maxId)
     const known = ids.filter((id) => save.seen.includes(id) || save.roster.includes(id))
     const mons = known.length ? await fetchMany(known) : []
     const map = new Map(mons.map((m) => [m.id, m]))
-
     await ensureTextures(
       this,
       mons.map((m) => ({ key: m.homeKey, url: m.homeUrl })),
     )
 
+    const zoneX = 20
+    const zoneY = L.contentY
+
     ids.forEach((id, i) => {
       const col = i % 3
       const row = Math.floor(i / 3)
-      const x = 60 + col * 165
-      const y = 100 + row * 88
+      const x = zoneX + 16 + col * 165
+      const y = zoneY + 44 + row * 100
       const knownMon = map.get(id)
       const caught = save.roster.includes(id)
       const seen = save.seen.includes(id) || caught
 
       const card = this.add.container(x, y).setData('dexEntry', true).setDepth(15)
       const g = this.add.graphics()
-      g.fillStyle(0x000000, seen ? 0.55 : 0.35)
-      g.fillRoundedRect(0, 0, 150, 76, 8)
-      g.lineStyle(1, seen ? Theme.red : Theme.muted, 1)
-      g.strokeRoundedRect(0, 0, 150, 76, 8)
+      g.fillStyle(0x000000, seen ? 0.45 : 0.3)
+      g.fillRoundedRect(0, 0, 150, 88, 10)
+      g.lineStyle(1, seen ? Theme.red : Theme.muted, 0.9)
+      g.strokeRoundedRect(0, 0, 150, 88, 10)
       card.add(g)
 
       if (seen && knownMon && this.textures.exists(knownMon.homeKey)) {
-        const img = this.add.image(32, 38, knownMon.homeKey).setScale(0.1)
+        const img = this.add.image(36, 44, knownMon.homeKey).setScale(0.11)
         if (!caught) img.setTint(0x333344)
         card.add(img)
       }
 
       card.add(
-        this.add.text(58, 14, String(id).padStart(3, '0'), {
+        this.add.text(70, 18, String(id).padStart(3, '0'), {
           fontFamily: '"Nunito", system-ui, sans-serif',
           fontSize: '11px',
           color: 'rgba(255,255,255,0.5)',
         }),
       )
       card.add(
-        this.add.text(58, 34, seen ? (knownMon?.nameFr ?? `#${id}`) : '???', {
+        this.add.text(70, 40, seen ? (knownMon?.nameFr ?? `#${id}`) : '???', {
           fontFamily: '"Fredoka", "Nunito", sans-serif',
           fontSize: '13px',
           color: seen ? '#ffffff' : 'rgba(255,255,255,0.4)',
-          wordWrap: { width: 85 },
+          wordWrap: { width: 70 },
         }),
       )
 
       if (seen) {
-        card.setSize(150, 76)
-        card.setInteractive(new Phaser.Geom.Rectangle(0, 0, 150, 76), Phaser.Geom.Rectangle.Contains)
+        card.setSize(150, 88)
+        card.setInteractive(new Phaser.Geom.Rectangle(0, 0, 150, 88), Phaser.Geom.Rectangle.Contains)
         card.input!.cursor = 'pointer'
         card.on('pointerdown', () => void this.showDetail(id))
       }
@@ -159,22 +148,23 @@ export class PokedexScene extends Phaser.Scene {
     this.badges.forEach((b) => b.destroy())
     this.badges = []
 
-    this.sprite = this.add.image(750, 170, mon.homeKey).setScale(0.32).setData('dexEntry', true).setDepth(16)
+    this.sprite = this.add
+      .image(750, L.contentY + 90, mon.homeKey)
+      .setScale(0.28)
+      .setData('dexEntry', true)
+      .setDepth(16)
     mon.types.forEach((t, i) => {
-      const badge = typeBadge(this, 660 + i * 70, 250, TYPE_FR[t] ?? t, TYPE_COLORS[t] ?? Theme.blue)
+      const badge = typeBadge(this, 680 + i * 70, L.contentY + 175, TYPE_FR[t] ?? t, TYPE_COLORS[t] ?? Theme.blue)
       badge.setData('dexEntry', true).setDepth(16)
       this.badges.push(badge)
     })
 
-    const moves = mon.moves.map((m) => m.nameFr).join(', ')
-    this.detail.setPosition(600, 275)
+    this.detail.setPosition(576, L.contentY + 200)
     this.detail.setText(
       `${mon.nameFr} · ${mon.genusFr}\n` +
         `Talent ${mon.abilityNameFr}\n` +
         `PV ${mon.hp}  Atk ${mon.atk}  Déf ${mon.def}\n` +
-        `AtqSp ${mon.spa}  DéfSp ${mon.spd}  Vit ${mon.spe}\n` +
-        `Capture ${mon.captureRate}\n` +
-        `Attaques : ${moves}\n\n` +
+        `AtqSp ${mon.spa}  DéfSp ${mon.spd}  Vit ${mon.spe}\n\n` +
         mon.flavorFr,
     )
     playCry(mon.cryUrl, 0.4)

@@ -2,11 +2,16 @@ import Phaser from 'phaser'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { GAME_H, GAME_W } from '../config'
+import { L, contentCard, drawShell } from '../layout'
 import { loadSave, resetProgress, writeSave } from '../data/pokeapi'
 import { emptyInventory, defaultMissions, emptyPity, formatPokedollars } from '../data/types'
 import { Theme } from '../theme'
 import { bodyText, fadeIn, goScene, makeButton, titleText } from '../ui'
 
+/**
+ * Splash d’accueil : une composition (brand + CTA + héros).
+ * Pas de shell hub ici.
+ */
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('title')
@@ -17,41 +22,49 @@ export class TitleScene extends Phaser.Scene {
     fadeIn(this, 0x0b0d12)
     const heroId = save.team[0]?.id || save.starterId || 6
     await paintScene(this, BG.title, {
-      dim: 0.28,
+      dim: 0.22,
       heroId,
       heroKind: 'home',
-      heroX: GAME_W * 0.72,
-      heroY: GAME_H * 0.55,
-      heroScale: 0.48,
+      heroX: GAME_W * 0.7,
+      heroY: GAME_H * 0.52,
+      heroScale: 0.5,
     })
 
-    this.add.rectangle(0, 0, GAME_W * 0.42, GAME_H, 0x000000, 0.4).setOrigin(0).setDepth(15)
+    // Panneau brand gauche
+    contentCard(this, 24, 80, 360, 340, { accent: Theme.red, depth: 15 })
 
-    titleText(this, 36, 110, 'PokeArena', {
-      size: '56px',
+    titleText(this, 44, 120, 'PokeArena', {
+      size: '42px',
       color: '#ffffff',
       origin: 0,
     })
       .setDepth(20)
-      .setStroke('#e3350d', 5)
+      .setStroke('#e3350d', 4)
 
-    bodyText(this, 40, 170, 'Gacha · Arène · Évolution', {
-      size: '16px',
-      color: 'rgba(255,255,255,0.9)',
+    bodyText(this, 44, 175, 'Gacha · Arène · Évolution', {
+      size: '15px',
+      color: 'rgba(255,255,255,0.85)',
       origin: 0,
     }).setDepth(20)
 
+    bodyText(this, 44, 210, 'Invoque, combat, fais évoluer\nton équipe.', {
+      size: '13px',
+      color: 'rgba(255,255,255,0.65)',
+      origin: 0,
+      align: 'left',
+    }).setDepth(20)
+
     const hasSave = Boolean(save.starterId && save.team.length)
-    makeButton(this, 140, 270, hasSave ? 'Continuer' : 'Nouvelle partie', {
+    makeButton(this, 204, 300, hasSave ? 'Continuer' : 'Nouvelle partie', {
       tone: 'red',
-      fontSize: '20px',
-      padX: 28,
+      fontSize: '18px',
+      padX: 24,
       padY: 12,
       onClick: () => goScene(this, hasSave ? 'hub' : 'onboard', Theme.red),
     }).setDepth(30)
 
     if (hasSave) {
-      makeButton(this, 140, 330, 'Recommencer', {
+      makeButton(this, 204, 360, 'Recommencer', {
         tone: 'dark',
         fontSize: '13px',
         padX: 14,
@@ -82,10 +95,10 @@ export class TitleScene extends Phaser.Scene {
 
       bodyText(
         this,
-        40,
+        44,
         400,
-        `${formatPokedollars(save.coins)}  ·  vague ${save.bestWave}  ·  région ${save.unlockedGen}`,
-        { size: '12px', color: 'rgba(255,255,255,0.75)', origin: 0 },
+        `${formatPokedollars(save.coins)} · vague ${save.bestWave} · R${save.unlockedGen}`,
+        { size: '12px', color: 'rgba(255,255,255,0.7)', origin: 0 },
       ).setDepth(20)
     }
 
