@@ -988,28 +988,32 @@ export async function pullGachaMulti(
       pokeball: save.inventory.pokeball - GACHA_MULTI_BALL_COST,
     },
   }
-  const results: Omit<GachaResult, 'save'>[] = []
+  const rolls: { id: number; stars: number; shiny: boolean; pity: number }[] = []
   let pity = getBannerPity(cur, bannerId)
 
   for (let i = 0; i < 10; i++) {
     const rolled = await resolveOnePull(banner, pity)
     pity = rolled.pity
-    cur = addToRoster(cur, rolled.id, 5 + rolled.stars * 2, rolled.shiny, rolled.stars)
-    results.push({ id: rolled.id, stars: rolled.stars, shiny: rolled.shiny, bannerId })
+    rolls.push(rolled)
   }
 
-  // Multi x10 : au moins un 3★ garanti
-  if (!results.some((r) => r.stars >= 3)) {
-    const forced = await resolveOnePull(banner, pity, 3)
-    pity = forced.pity
-    const last = results.length - 1
-    cur = addToRoster(cur, forced.id, 5 + 3 * 2, forced.shiny, 3)
-    results[last] = { id: forced.id, stars: 3, shiny: forced.shiny, bannerId }
+  // Multi x10 : au moins un 3★ garanti (remplace le dernier tirage, sans tick pity en plus)
+  if (!rolls.some((r) => r.stars >= 3)) {
+    const id = await pickStage3Id(banner)
+    const shiny = Math.random() < 0.06
+    rolls[rolls.length - 1] = { id, stars: 3, shiny, pity }
+  }
+
+  for (const r of rolls) {
+    cur = addToRoster(cur, r.id, 5 + r.stars * 2, r.shiny, r.stars)
   }
 
   cur = setBannerPity(cur, bannerId, pity)
   cur = bumpMission(cur, 'gacha1')
-  return { results, save: cur }
+  return {
+    results: rolls.map((r) => ({ id: r.id, stars: r.stars, shiny: r.shiny, bannerId })),
+    save: cur,
+  }
 }
 
 /** Première invoc gratuite : Bulbizarre / Salamèche / Carapuce (1★) */
