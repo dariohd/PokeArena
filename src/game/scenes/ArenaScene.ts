@@ -24,6 +24,7 @@ import {
   type MonSummary,
 } from '../data/types'
 import { Fighter } from '../entities/Fighter'
+import { ARENA_FAR_Y, ARENA_NEAR_Y, drawPerspectiveArena, spawnDriftClouds } from '../fx'
 
 export class ArenaScene extends Phaser.Scene {
   private player!: Fighter
@@ -97,9 +98,9 @@ export class ArenaScene extends Phaser.Scene {
     this.unlockedGen = save.unlockedGen
 
     this.chart = await ensureTypeChart()
-    this.cameras.main.fadeIn(180, 143, 211, 244)
+    this.cameras.main.fadeIn(220, 107, 184, 224)
     this.drawArena()
-    this.physics.world.setBounds(60, 100, GAME_W - 120, GAME_H - 170)
+    this.physics.world.setBounds(80, ARENA_FAR_Y - 10, GAME_W - 160, ARENA_NEAR_Y - ARENA_FAR_Y + 40)
 
     const team = save.team.length
       ? save.team
@@ -110,7 +111,7 @@ export class ArenaScene extends Phaser.Scene {
       const mon = await this.ensureMon(slot.id, slot.level, true)
       save.seen = markSeen(save, mon.id).seen
       const x = GAME_W / 2 + (i - (team.length - 1) / 2) * 70
-      const y = GAME_H / 2 + 50
+      const y = Phaser.Math.Clamp(GAME_H / 2 + 70, ARENA_FAR_Y + 40, ARENA_NEAR_Y - 20)
       const f = new Fighter(this, x, y, mon, 'player', {
         scaleMul: i === 0 ? 1.15 : 0.95,
         level: effectiveLevel(slot),
@@ -342,22 +343,8 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   drawArena() {
-    const g = this.add.graphics()
-    g.fillGradientStyle(0x8fd3f4, 0x8fd3f4, 0xd6f0fb, 0xd6f0fb, 1)
-    g.fillRect(0, 0, GAME_W, GAME_H)
-
-    g.fillStyle(0x7ac74f, 1)
-    g.fillEllipse(180, 220, 280, 90)
-    g.fillEllipse(780, 200, 260, 80)
-
-    g.fillStyle(0x4f9a2e, 1)
-    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 40, 820, 300)
-    g.fillStyle(0xe8c878, 1)
-    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 45, 700, 240)
-    g.fillStyle(0xc9a24a, 1)
-    g.fillEllipse(GAME_W / 2, GAME_H / 2 + 45, 620, 200)
-    g.lineStyle(4, 0xffffff, 0.6)
-    g.strokeEllipse(GAME_W / 2, GAME_H / 2 + 45, 620, 200)
+    drawPerspectiveArena(this)
+    spawnDriftClouds(this, 2)
   }
 
   async ensureMon(id: number, levelHint = 40, full = false): Promise<MonSummary> {
@@ -395,8 +382,12 @@ export class ArenaScene extends Phaser.Scene {
       writeSave(save)
 
       const angle = (i / count) * Math.PI * 2
-      const x = GAME_W / 2 + Math.cos(angle) * (boss ? 0 : 220)
-      const y = GAME_H / 2 + 30 + Math.sin(angle) * (boss ? -40 : 90)
+      const x = Phaser.Math.Clamp(GAME_W / 2 + Math.cos(angle) * (boss ? 0 : 200), 120, GAME_W - 120)
+      const y = Phaser.Math.Clamp(
+        GAME_H / 2 + 40 + Math.sin(angle) * (boss ? -20 : 70),
+        ARENA_FAR_Y + 20,
+        ARENA_NEAR_Y - 10,
+      )
       const level = Math.round(5 + this.wave * 1.1 + (boss ? 5 : 0))
       const foe = new Fighter(this, x, y, mon, 'enemy', {
         scaleMul: boss ? 1.35 : 0.95 + this.wave * 0.015,

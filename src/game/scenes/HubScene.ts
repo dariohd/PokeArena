@@ -3,6 +3,7 @@ import { toggleMute } from '../audio'
 import { GAME_H, GAME_W } from '../config'
 import { claimMission, fetchMany, loadSave, writeSave } from '../data/pokeapi'
 import { MISSION_DEFS, formatPokedollars } from '../data/types'
+import { spawnAmbientSparkles } from '../fx'
 import { Theme } from '../theme'
 import {
   bodyText,
@@ -34,12 +35,17 @@ export class HubScene extends Phaser.Scene {
   async create() {
     fadeIn(this, Theme.pink)
     drawRoom(this, 'centre')
+    spawnAmbientSparkles(this, 12, 0xffffff)
     const save = loadSave()
 
-    titleText(this, GAME_W / 2, 28, 'Centre Pokémon', { size: '24px', color: '#ffffff' })
+    titleText(this, GAME_W / 2, 26, 'Centre Pokémon', { size: '26px', color: '#ffffff' })
+    bodyText(this, GAME_W / 2, 50, 'Lobby · choisis ta destination', {
+      size: '12px',
+      color: '#5a3040',
+    })
     walletBar(
       this,
-      52,
+      68,
       [
         formatPokedollars(save.coins),
         `${save.inventory.pokeball} Ball`,
@@ -57,8 +63,8 @@ export class HubScene extends Phaser.Scene {
     )
     const byId = new Map(mons.map((m) => [m.id, m]))
 
-    drawPanel(this, 28, 70, 580, 390, { stroke: Theme.red, radius: 16 })
-    this.add.text(48, 86, 'Tableau d’affichage', {
+    drawPanel(this, 28, 86, 580, 372, { stroke: Theme.red, radius: 16 })
+    this.add.text(48, 100, 'Tableau d’affichage', {
       fontFamily: '"Fredoka", "Nunito", sans-serif',
       fontSize: '15px',
       color: hexCss(Theme.red),
@@ -68,7 +74,7 @@ export class HubScene extends Phaser.Scene {
       const col = i % 2
       const row = Math.floor(i / 2)
       const x = 55 + col * 270
-      const y = 125 + row * 105
+      const y = 138 + row * 100
       const note = this.add.container(x, y)
       const bg = this.add.graphics()
       bg.fillStyle(Theme.panel, 1)
@@ -97,18 +103,20 @@ export class HubScene extends Phaser.Scene {
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true,
       })
-      note.on('pointerover', () => this.tweens.add({ targets: note, scale: 1.04, duration: 80 }))
-      note.on('pointerout', () => this.tweens.add({ targets: note, scale: 1, duration: 80 }))
+      note.on('pointerover', () =>
+        this.tweens.add({ targets: note, scale: 1.04, y: y - 3, duration: 90 }),
+      )
+      note.on('pointerout', () => this.tweens.add({ targets: note, scale: 1, y, duration: 90 }))
       note.on('pointerdown', () => goScene(this, p.scene, p.accent))
     })
 
-    drawPanel(this, 630, 70, 300, 390, { stroke: Theme.blue, radius: 16 })
-    titleText(this, 780, 92, 'Quêtes du jour', { size: '16px', color: hexCss(Theme.blue) })
+    drawPanel(this, 630, 86, 300, 372, { stroke: Theme.blue, radius: 16 })
+    titleText(this, 780, 108, 'Quêtes du jour', { size: '16px', color: hexCss(Theme.blue) })
 
     save.missions.forEach((m, i) => {
       const def = MISSION_DEFS.find((d) => d.id === m.id)
       if (!def) return
-      const y = 130 + i * 78
+      const y = 148 + i * 74
       bodyText(this, 650, y, def.title, {
         size: '12px',
         color: hexCss(Theme.ink),
@@ -118,13 +126,13 @@ export class HubScene extends Phaser.Scene {
       bodyText(
         this,
         650,
-        y + 24,
+        y + 22,
         `${m.progress}/${m.target} · +${formatPokedollars(def.rewardCoins)} +${def.rewardBalls} Ball`,
         { size: '11px', origin: 0 },
       )
       const done = m.progress >= m.target
       if (done && !m.claimed) {
-        makeButton(this, 780, y + 52, 'Réclamer', {
+        makeButton(this, 780, y + 50, 'Réclamer', {
           tone: 'green',
           fontSize: '12px',
           padX: 10,
@@ -137,7 +145,7 @@ export class HubScene extends Phaser.Scene {
           },
         })
       } else if (m.claimed) {
-        bodyText(this, 780, y + 52, 'OK', { size: '12px', color: hexCss(Theme.grassDark) })
+        bodyText(this, 780, y + 50, 'OK', { size: '12px', color: hexCss(Theme.grassDark) })
       }
     })
 

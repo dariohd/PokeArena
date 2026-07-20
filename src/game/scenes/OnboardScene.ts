@@ -16,6 +16,7 @@ import {
   starsLabel,
   titleText,
 } from '../ui'
+import { spawnAmbientSparkles } from '../fx'
 
 export class OnboardScene extends Phaser.Scene {
   private busy = false
@@ -29,6 +30,7 @@ export class OnboardScene extends Phaser.Scene {
   create() {
     this.busy = false
     fadeIn(this)
+    spawnAmbientSparkles(this, 14, 0xffffff)
     this.showGuide()
   }
 
@@ -40,6 +42,7 @@ export class OnboardScene extends Phaser.Scene {
   showGuide() {
     this.clearUi()
     drawRoom(this, 'centre')
+    spawnAmbientSparkles(this, 10, 0xffffff)
     titleText(this, GAME_W / 2, 28, 'Bienvenue dresseur', { size: '28px', color: '#ffffff' })
 
     const tips = [

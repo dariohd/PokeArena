@@ -20,7 +20,7 @@ export function createGame(parent: string) {
     parent,
     width: GAME_W,
     height: GAME_H,
-    backgroundColor: '#7ec8e3',
+    backgroundColor: '#0b1220',
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <meta name="theme-color" content="#8fd3f4" />
-    <meta name="description" content="PokeArena — arène, bannières et Pokédex FR avec data live PokéAPI." />
+    <meta name="theme-color" content="#1a3a5c" />
+    <meta name="description" content="PokeArena — gacha 2D, arène 2.5D et Pokédex FR (PokéAPI)." />
     <title>PokeArena</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,8 +13,15 @@
   </head>
   <body>
     <div id="boot">
-      <p class="boot__brand">PokeArena</p>
-      <p class="boot__sub">Ouverture du Pokédex…</p>
+      <div class="boot__stage">
+        <div class="boot__ball" aria-hidden="true"></div>
+        <p class="boot__brand">PokeArena</p>
+        <p class="boot__sub">Ouverture du Centre…</p>
+        <div class="boot__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="boot__bar-fill" id="boot-fill"></div>
+        </div>
+        <p class="boot__pct" id="boot-pct">0%</p>
+      </div>
     </div>
     <div id="game"></div>
     <script type="module" src="/src/main.ts"></script>

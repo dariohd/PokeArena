@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { MonSummary, MoveSummary } from '../data/types'
+import { depthScale } from '../fx'
 import { FONT_UI, Theme } from '../theme'
 
 export class Fighter extends Phaser.Physics.Arcade.Sprite {
@@ -16,6 +17,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   preferredMove = 0
   barWidth: number
   barHeight: number
+  baseScale: number
   shadow!: Phaser.GameObjects.Ellipse
   label!: Phaser.GameObjects.Text
   hpBarBg!: Phaser.GameObjects.Rectangle
@@ -53,36 +55,36 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     body.setDrag(1000, 1000)
     body.setMaxVelocity(this.moveSpeed, this.moveSpeed)
 
-    // Battle sprites are ~96px — scale ~2.2 looks like classic arena sprites
-    const scaleMul = opts?.scaleMul ?? 1
-    this.setScale(2.15 * scaleMul)
+    this.baseScale = 2.05 * (opts?.scaleMul ?? 1)
+    this.setScale(depthScale(y, this.baseScale))
     this.setDepth(y)
     if (shiny) this.setTint(0xfff1a8)
 
+    const s = depthScale(y, 1)
     this.shadow = scene.add
-      .ellipse(x, y + 28, 42, 14, Theme.shadow, 0.28)
+      .ellipse(x, y + 22 * s, 48 * s, 16 * s, Theme.shadow, 0.32)
       .setDepth(y - 1)
 
     this.label = scene.add
-      .text(x, y - 48, `N.${this.level} ${mon.nameFr}`, {
+      .text(x, y - 52 * s, `N.${this.level} ${mon.nameFr}`, {
         fontFamily: FONT_UI,
         fontSize: '12px',
-        color: '#2a2a3a',
-        backgroundColor: '#fff8f0cc',
-        padding: { x: 4, y: 2 },
+        color: '#fffbf5',
+        backgroundColor: '#1e2438cc',
+        padding: { x: 5, y: 2 },
       })
       .setOrigin(0.5)
       .setDepth(1000)
 
-    this.barWidth = team === 'player' ? 52 : 42
+    this.barWidth = team === 'player' ? 54 : 44
     this.barHeight = 6
     this.hpBarBg = scene.add
-      .rectangle(x, y - 34, this.barWidth + 2, this.barHeight + 2, 0x2a2a3a, 0.85)
+      .rectangle(x, y - 36 * s, this.barWidth + 2, this.barHeight + 2, 0x1e2438, 0.9)
       .setDepth(1001)
     this.hpBarFg = scene.add
       .rectangle(
         x - this.barWidth / 2,
-        y - 34,
+        y - 36 * s,
         this.barWidth,
         this.barHeight,
         team === 'player' ? Theme.hpGreen : Theme.hpRed,
@@ -126,11 +128,20 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   }
 
   updateFx() {
+    const s = depthScale(this.y, 1)
+    this.setScale(depthScale(this.y, this.baseScale))
     this.setDepth(this.y)
-    this.shadow.setPosition(this.x, this.y + 28).setDepth(this.y - 1)
-    this.label.setPosition(this.x, this.y - 48)
-    this.hpBarBg.setPosition(this.x, this.y - 34)
-    this.hpBarFg.setPosition(this.x - this.barWidth / 2, this.y - 34)
+
+    this.shadow
+      .setPosition(this.x, this.y + 22 * s)
+      .setSize(48 * s, 16 * s)
+      .setDisplaySize(48 * s, 16 * s)
+      .setDepth(this.y - 1)
+      .setAlpha(0.22 + s * 0.14)
+
+    this.label.setPosition(this.x, this.y - 52 * s).setScale(0.85 + s * 0.2)
+    this.hpBarBg.setPosition(this.x, this.y - 36 * s).setScale(0.9 + s * 0.15)
+    this.hpBarFg.setPosition(this.x - this.barWidth / 2, this.y - 36 * s)
 
     const dt = this.scene.game.loop.delta
     this.displayHp += (this.hp - this.displayHp) * Math.min(1, dt / 120)
@@ -154,7 +165,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.scene.tweens.add({
       targets: [this, this.label, this.hpBarBg, this.hpBarFg, this.shadow],
       alpha: 0,
-      duration: 80,
+      duration: 90,
       onComplete,
     })
   }

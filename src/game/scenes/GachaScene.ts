@@ -26,6 +26,7 @@ import {
   titleText,
   walletBar,
 } from '../ui'
+import { spawnAmbientSparkles } from '../fx'
 
 export class GachaScene extends Phaser.Scene {
   private busy = false
@@ -57,6 +58,7 @@ export class GachaScene extends Phaser.Scene {
 
   drawPick(banners: RegionBanner[], balls: number, coins: number, unlockedGen: number) {
     drawRoom(this, 'machine', Theme.gold)
+    spawnAmbientSparkles(this, 16, 0xffd070)
     titleText(this, GAME_W / 2, 28, 'Bannières régionales', { size: '26px', color: '#ffd070' })
     walletBar(
       this,
@@ -109,6 +111,7 @@ export class GachaScene extends Phaser.Scene {
     const save = loadSave()
     const pity = save.gachaPityByBanner[b.id] ?? 0
     drawRoom(this, 'machine', b.color)
+    spawnAmbientSparkles(this, 14, 0xffd070)
 
     titleText(this, GAME_W / 2, 28, `Bannière · ${b.nameFr}`, {
       size: '24px',
