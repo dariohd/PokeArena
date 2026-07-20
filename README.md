@@ -16,15 +16,29 @@ npm run dev
 
 → http://localhost:5173
 
-- **ZQSD / flèches** : déplacement
-- Attaque auto au contact
-- Recrute les vaincus (chance selon combo)
-- 12 vagues · stats & sprites PokéAPI
+### Contrôles
 
-## Remplace
+| Action | Clavier | Tactile |
+|--------|---------|---------|
+| Déplacement | ZQSD / WASD / flèches | Stick virtuel |
+| Attaque | Auto au contact | Auto |
+| Choisir capacité | Touches **1–4** | — |
+| Capture | **C** | Bouton BALL |
+| Soin / Rappel | **H** | Bouton SOIN |
 
-Anciens projets retirés : PokeRift + PokemonRumbleWeb (fusionnés dans cette expérience unique).
+## Contenu PokéAPI
 
-## Légal
+- `/pokemon` — 6 stats, sprites artwork (+ shiny), cris, moveset level-up
+- `/pokemon-species` — noms FR, descriptions Pokédex, taux de capture, légendaires
+- `/move` — puissance, précision, type, classe physique/spéciale
+- `/type` — table d’efficacité (STAB + super/peu efficace / immunité)
+- `/ability` — talent affiché en FR
+- `/evolution-chain` — évolutions par niveau
 
-Fan game non commercial, non affilié à Nintendo / Game Freak / The Pokémon Company. Données via [PokéAPI](https://pokeapi.co/).
+## Boucle de jeu
+
+1. Choisir un starter → Centre Pokémon (équipe, boutique, Pokédex)
+2. Arène : 15 vagues, boss toutes les 5, types & capacités réels
+3. Capture aux Balls, XP / niveaux / évolutions, meta-progression (gens)
+
+Fan game non commercial, non affilié à Nintendo / Game Freak / The Pokémon Company.

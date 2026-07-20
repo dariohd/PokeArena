@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import { BootScene } from './scenes/BootScene'
 import { TitleScene } from './scenes/TitleScene'
 import { SelectScene } from './scenes/SelectScene'
+import { HubScene } from './scenes/HubScene'
+import { PokedexScene } from './scenes/PokedexScene'
 import { ArenaScene } from './scenes/ArenaScene'
 import { ResultScene } from './scenes/ResultScene'
 
@@ -26,7 +28,7 @@ export function createGame(parent: string) {
         debug: false,
       },
     },
-    scene: [BootScene, TitleScene, SelectScene, ArenaScene, ResultScene],
+    scene: [BootScene, TitleScene, SelectScene, HubScene, PokedexScene, ArenaScene, ResultScene],
     render: {
       antialias: true,
       roundPixels: false,

@@ -1,18 +1,20 @@
 import Phaser from 'phaser'
-import type { MonSummary } from '../data/types'
+import type { MonSummary, MoveSummary } from '../data/types'
+import { TYPE_FR } from '../data/types'
 
 export class Fighter extends Phaser.Physics.Arcade.Sprite {
   mon: MonSummary
+  level: number
+  shiny: boolean
   maxHp: number
   hp: number
   displayHp: number
-  atk: number
-  def: number
   moveSpeed: number
   team: 'player' | 'enemy'
   attackCd = 0
   hitFlash = 0
   lowHpPulse = 0
+  preferredMove = 0
   barWidth: number
   barHeight: number
   shadow!: Phaser.GameObjects.Ellipse
@@ -26,19 +28,22 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     y: number,
     mon: MonSummary,
     team: 'player' | 'enemy',
-    scaleMul = 1,
+    opts?: { scaleMul?: number; level?: number; shiny?: boolean },
   ) {
-    super(scene, x, y, mon.spriteKey)
+    const shiny = opts?.shiny ?? false
+    const key = shiny ? `${mon.spriteKey}-shiny` : mon.spriteKey
+    super(scene, x, y, scene.textures.exists(key) ? key : mon.spriteKey)
     this.mon = mon
     this.team = team
+    this.level = opts?.level ?? (team === 'player' ? 10 : 8)
+    this.shiny = shiny
 
     const bulk = (mon.hp + mon.def) / 160
-    this.maxHp = Math.round(80 + mon.hp * 1.35)
+    const lvlFactor = 0.7 + this.level * 0.045
+    this.maxHp = Math.round((50 + mon.hp * 1.5) * lvlFactor)
     this.hp = this.maxHp
     this.displayHp = this.hp
-    this.atk = 10 + mon.atk * 0.22
-    this.def = 6 + mon.def * 0.12
-    this.moveSpeed = 140 + mon.spd * 0.55
+    this.moveSpeed = 130 + mon.spe * 0.55
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -49,23 +54,27 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     body.setDrag(900, 900)
     body.setMaxVelocity(this.moveSpeed, this.moveSpeed)
 
+    const scaleMul = opts?.scaleMul ?? 1
     this.setScale(0.28 * scaleMul * (0.9 + bulk * 0.15))
     this.setDepth(y)
+    if (shiny) this.setTint(0xfff1a8)
 
     this.shadow = scene.add
       .ellipse(x, y + 34, 54, 18, 0x000000, 0.35)
       .setDepth(y - 1)
 
+    const typeTag = mon.types.map((t) => TYPE_FR[t] ?? t).join('/')
     this.label = scene.add
-      .text(x, y - 58, mon.name, {
+      .text(x, y - 58, `N.${this.level} ${mon.nameFr}`, {
         fontFamily: 'Space Grotesk, sans-serif',
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#e8f2ff',
         stroke: '#070b12',
         strokeThickness: 3,
       })
       .setOrigin(0.5)
       .setDepth(1000)
+    this.label.setData('types', typeTag)
 
     this.barWidth = team === 'player' ? 58 : 46
     this.barHeight = team === 'player' ? 7 : 5
@@ -83,6 +92,10 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     return this.hp > 0 && this.active
   }
 
+  get activeMove(): MoveSummary {
+    return this.mon.moves[this.preferredMove] ?? this.mon.moves[0]
+  }
+
   hpColor(ratio: number) {
     if (this.team === 'player') {
       if (ratio < 0.25) return 0xff4d7a
@@ -93,7 +106,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeDamage(raw: number): number {
-    const dmg = Math.max(1, raw - this.def * 0.35)
+    const dmg = Math.max(0, Math.round(raw))
     this.hp = Math.max(0, this.hp - dmg)
     this.hitFlash = 130
     this.setTint(0xffffff)
@@ -108,13 +121,16 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     return dmg
   }
 
-  tryAttack(target: Fighter, now: number): number {
-    if (now < this.attackCd || !target.alive) return 0
-    const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y)
-    if (dist > 78) return 0
-    this.attackCd = now + Math.max(280, 720 - this.mon.spd * 2.2)
-    const dmg = this.atk * Phaser.Math.FloatBetween(0.9, 1.15)
-    return target.takeDamage(dmg)
+  heal(amount: number) {
+    this.hp = Math.min(this.maxHp, this.hp + amount)
+  }
+
+  attackDelay(): number {
+    return Math.max(260, 780 - this.mon.spe * 2.1 - this.level * 4)
+  }
+
+  inMeleeRange(target: Fighter, range = 82) {
+    return Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y) <= range
   }
 
   updateFx() {
@@ -124,7 +140,6 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.hpBarBg.setPosition(this.x, this.y - 42)
     this.hpBarFg.setPosition(this.x - this.barWidth / 2, this.y - 42)
 
-    // Smoothly ease the visible bar toward the real HP so hits read clearly instead of snapping.
     const dt = this.scene.game.loop.delta
     this.displayHp += (this.hp - this.displayHp) * Math.min(1, dt / 140)
     const ratio = Phaser.Math.Clamp(this.displayHp / this.maxHp, 0, 1)
@@ -140,11 +155,13 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
 
     if (this.hitFlash > 0) {
       this.hitFlash -= dt
-      if (this.hitFlash <= 0) this.clearTint()
+      if (this.hitFlash <= 0) {
+        if (this.shiny) this.setTint(0xfff1a8)
+        else this.clearTint()
+      }
     }
   }
 
-  /** Plays a short death poof (fade, stretch, ring burst) then invokes the callback to finish cleanup. */
   playDeathFx(onComplete: () => void) {
     const body = this.body as Phaser.Physics.Arcade.Body
     body.setVelocity(0, 0)
@@ -176,7 +193,7 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
       y: this.y - 8,
       duration: 260,
       ease: 'Cubic.easeIn',
-      onComplete: onComplete,
+      onComplete,
     })
   }
 
