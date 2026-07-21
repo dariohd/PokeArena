@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { toggleMute } from '../audio'
+import { logout } from '../auth'
 import { BG } from '../assets'
 import { paintScene } from '../backdrop'
 import { GAME_W } from '../config'
@@ -218,15 +219,17 @@ export class HubScene extends Phaser.Scene {
     }).setDepth(102)
 
     makeDockIcon(this, GAME_W - 36, y, {
-      label: 'Menu',
+      label: 'Quitter',
       accent: Theme.red,
       drawIcon: (g) => {
         g.lineStyle(2.5, 0xffffff, 0.95)
-        g.lineBetween(-7, -12, 7, -12)
-        g.lineBetween(-7, -6, 7, -6)
-        g.lineBetween(-7, 0, 7, 0)
+        g.lineBetween(-6, -12, 6, 0)
+        g.lineBetween(6, -12, -6, 0)
       },
-      onClick: () => goScene(this, 'title'),
+      onClick: () => {
+        logout()
+        window.location.reload()
+      },
     }).setDepth(102)
   }
 

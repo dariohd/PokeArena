@@ -25,14 +25,20 @@ import {
   type RegionId,
   type SaveData,
 } from './types'
+import { getActiveUserId, saveKeyForUser } from '../auth'
 
 const CACHE_KEY = 'pokearena-api-v5'
 const TYPE_KEY = 'pokearena-types-v2'
 const MOVE_KEY = 'pokearena-moves-v1'
-const SAVE_KEY = 'pokearena-save-v4'
 const SAVE_LEGACY_V3 = 'pokearena-save-v3'
 const SAVE_LEGACY_V2 = 'pokearena-save-v2'
 const SAVE_LEGACY = 'pokearena-save-v1'
+const SAVE_GLOBAL = 'pokearena-save-v4'
+
+function currentSaveKey(): string {
+  const uid = getActiveUserId()
+  return uid ? saveKeyForUser(uid) : SAVE_GLOBAL
+}
 
 type CacheBag = Record<string, MonSummary>
 export type TypeChart = Record<string, Record<string, number>>
@@ -102,6 +108,7 @@ function normalizeOwned(m: Partial<OwnedMon> & { id: number }): OwnedMon {
 }
 
 export function loadSave(): SaveData {
+  const SAVE_KEY = currentSaveKey()
   try {
     const raw = localStorage.getItem(SAVE_KEY)
     if (raw) {
@@ -110,6 +117,21 @@ export function loadSave(): SaveData {
     }
   } catch {
     /* fall through */
+  }
+
+  // Migrate global save → compte actif
+  if (SAVE_KEY !== SAVE_GLOBAL) {
+    try {
+      const global = localStorage.getItem(SAVE_GLOBAL)
+      if (global) {
+        localStorage.setItem(SAVE_KEY, global)
+        localStorage.removeItem(SAVE_GLOBAL)
+        const data = JSON.parse(global) as SaveData
+        if (data.version === 4) return sanitizeSave(data)
+      }
+    } catch {
+      /* fall through */
+    }
   }
 
   // Migrate v3
@@ -270,17 +292,20 @@ function sanitizeSave(s: SaveData): SaveData {
 
 export function writeSave(save: SaveData) {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(sanitizeSave(save)))
+    localStorage.setItem(currentSaveKey(), JSON.stringify(sanitizeSave(save)))
   } catch {
     /* quota */
   }
 }
 
 export function resetProgress() {
-  localStorage.removeItem(SAVE_KEY)
-  localStorage.removeItem(SAVE_LEGACY_V3)
-  localStorage.removeItem(SAVE_LEGACY_V2)
-  localStorage.removeItem(SAVE_LEGACY)
+  const key = currentSaveKey()
+  localStorage.removeItem(key)
+  if (key === SAVE_GLOBAL) {
+    localStorage.removeItem(SAVE_LEGACY_V3)
+    localStorage.removeItem(SAVE_LEGACY_V2)
+    localStorage.removeItem(SAVE_LEGACY)
+  }
 }
 
 function capitalize(name: string) {

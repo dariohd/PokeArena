@@ -19,15 +19,15 @@ export function fadeIn(scene: Phaser.Scene, color: number = Theme.fade) {
   const r = (color >> 16) & 0xff
   const g = (color >> 8) & 0xff
   const b = color & 0xff
-  scene.cameras.main.fadeIn(220, r, g, b)
+  scene.cameras.main.fadeIn(120, r, g, b)
 }
 
 export function goScene(scene: Phaser.Scene, key: string, color: number = Theme.fade) {
   const r = (color >> 16) & 0xff
   const g = (color >> 8) & 0xff
   const b = color & 0xff
-  scene.cameras.main.fadeOut(160, r, g, b)
-  scene.time.delayedCall(170, () => scene.scene.start(key))
+  scene.cameras.main.fadeOut(90, r, g, b)
+  scene.time.delayedCall(100, () => scene.scene.start(key))
 }
 
 export function drawPokeBall(scene: Phaser.Scene, x: number, y: number, radius = 36) {

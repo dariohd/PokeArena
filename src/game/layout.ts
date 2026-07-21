@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GAME_H, GAME_W } from './config'
+import { getActiveUsername } from './auth'
 import { loadSave } from './data/pokeapi'
 import { formatPokedollars } from './data/types'
 import { FONT_TITLE, FONT_UI, Theme } from './theme'
@@ -48,6 +49,18 @@ export function drawShell(scene: Phaser.Scene, opts: ShellOpts) {
     })
     .setOrigin(0, 0.5)
     .setDepth(101)
+
+  const user = getActiveUsername()
+  if (user && !opts.back) {
+    scene.add
+      .text(L.pad + opts.title.length * 11 + 16, L.topH / 2, `· ${user}`, {
+        fontFamily: FONT_UI,
+        fontSize: '12px',
+        color: 'rgba(255,255,255,0.55)',
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(101)
+  }
 
   if (showWallet) {
     const wallet = `${formatPokedollars(save.coins)} · ${save.inventory.pokeball} balls · ${save.inventory.rareCandy} bonbons · gen ${save.unlockedGen}`

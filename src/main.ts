@@ -1,3 +1,7 @@
+import { ensureAuth } from './auth-gate'
 import { createGame } from './game/config'
 
-createGame('game')
+void (async () => {
+  await ensureAuth()
+  createGame('game')
+})()

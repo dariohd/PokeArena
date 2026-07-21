@@ -1,10 +1,8 @@
 import Phaser from 'phaser'
-import { BG } from '../assets'
 import { preloadBackgrounds } from '../backdrop'
 import { ensureTypeChart, fetchMany, loadSave } from '../data/pokeapi'
-import { ITEM_SPRITE, STARTERS } from '../data/types'
+import { STARTER_TRIO } from '../data/types'
 import { hideBootOverlay, setBootProgress } from '../fx'
-import { ensureItemIcons, itemSpriteUrl, itemTextureKey } from '../ui'
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -12,60 +10,48 @@ export class BootScene extends Phaser.Scene {
   }
 
   async create() {
-    setBootProgress(5, 'Fonds Pokémon Showdown…')
+    setBootProgress(8, 'Préparation…')
     const save = loadSave()
 
     try {
-      await preloadBackgrounds(this)
-      setBootProgress(25, 'Chart des types…')
-      await ensureTypeChart()
+      await Promise.all([preloadBackgrounds(this), ensureTypeChart()])
+      setBootProgress(45, 'Équipe…')
 
-      setBootProgress(40, 'Objets…')
-      await ensureItemIcons(this)
-
-      setBootProgress(55, 'Sprites HOME…')
       const ids = [
         ...new Set([
-          ...STARTERS,
+          ...STARTER_TRIO,
           ...save.team.map((t) => t.id),
-          ...save.roster.slice(0, 16),
-          6,
+          save.starterId || 0,
           25,
-          150,
-          151,
-        ]),
+        ].filter(Boolean)),
       ]
       const mons = await fetchMany(ids, { full: false })
       for (const m of mons) {
         if (!this.textures.exists(m.homeKey)) this.load.image(m.homeKey, m.homeUrl)
-        if (!this.textures.exists(m.spriteKey)) this.load.image(m.spriteKey, m.spriteUrl)
-      }
-      for (const [k, api] of Object.entries(ITEM_SPRITE)) {
-        const key = itemTextureKey(k as keyof typeof ITEM_SPRITE)
-        if (!this.textures.exists(key)) this.load.image(key, itemSpriteUrl(api))
       }
 
       if (this.load.list.size > 0) {
-        setBootProgress(70, 'Téléchargement…')
+        setBootProgress(65, 'Sprites…')
         await new Promise<void>((resolve) => {
-          this.load.on('progress', (v: number) => setBootProgress(70 + v * 25, 'Sprites HQ…'))
+          this.load.on('progress', (v: number) => setBootProgress(65 + v * 30, 'Presque…'))
           this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve())
           this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve())
           this.load.start()
         })
       }
 
-      setBootProgress(100, 'Prêt')
-      await this.wait(280)
+      setBootProgress(100, 'Go')
     } catch (e) {
       console.warn('boot partial', e)
-      setBootProgress(100, 'Mode partiel…')
-      await this.wait(400)
+      setBootProgress(100, 'Go')
     }
 
     hideBootOverlay()
-    await this.wait(220)
-    this.scene.start('title')
+    await this.wait(80)
+
+    // Direct hub / onboard — pas de title
+    const ready = Boolean(save.starterId && save.team.length)
+    this.scene.start(ready ? 'hub' : 'onboard')
   }
 
   wait(ms: number) {
